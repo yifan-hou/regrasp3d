@@ -1,7 +1,7 @@
 % object def
 % 	mlist: list of modes
 %	plist: list of vertices of mesh model
-function [graph mesh] = getObject(verbosity) 
+function [fgraph pgraph mesh] = getObject(para) 
 
 % --------------------------------------------
 % 		geometry
@@ -17,6 +17,16 @@ points(:,5) = [2 3 1]';
 points(:,6) = [0 3 1]';
 points(:,7) = [0 3 0]';
 points(:,8) = [2 3 0]';
+
+p_connectmatrix = zeros(NP);
+p_connectmatrix(1, [2 4 6]) = 1;
+p_connectmatrix(2, [1 3 5]) = 1;
+p_connectmatrix(3, [2 4 8]) = 1;
+p_connectmatrix(4, [1 3 7]) = 1;
+p_connectmatrix(5, [2 6 8]) = 1;
+p_connectmatrix(6, [1 5 7]) = 1;
+p_connectmatrix(7, [4 6 8]) = 1;
+p_connectmatrix(8, [3 5 7]) = 1;
 
 % todo: better way to calculate COM for mesh model
 COM = mean(points, 2);
@@ -89,12 +99,19 @@ end
 % pmodes{7} = [v7 e2 e3 e11 f3 f4 f6];
 % pmodes{8} = [v8 e5 e6 e11 f2 f3 f6];
 
-graph.NM            = NM;
-graph.contact_area  = m_contact_area;
-graph.normal        = m_normal;
-graph.center        = m_center;
-graph.connectmatrix = m_connectmatrix;
-graph.quat          = m_quat;
+fgraph.NM            = NM;
+fgraph.contact_area  = m_contact_area;
+fgraph.normal        = m_normal;
+fgraph.center        = m_center;
+fgraph.connectmatrix = m_connectmatrix;
+fgraph.quat          = m_quat;
+
+
+pgraph.NP            = NP;
+pgraph.points        = points;
+pgraph.connectmatrix = p_connectmatrix;
+
+
 
 mesh.faces      = faces;
 mesh.points     = points;
@@ -104,8 +121,8 @@ mesh.COM        = COM;
 % --------------------------------------------
 % 		plotting
 % --------------------------------------------
-if verbosity >= 1
-	plotObject(mesh, 1);
+if para.showObject
+	plotObject(mesh, para.showObject_id);
 	for i = 1:NM
 		plot3(m_center(1,i), m_center(2,i), m_center(3,i),'.','markersize',15);
 		quiver3(m_center(1,i), m_center(2,i), m_center(3,i), m_normal(1,i), m_normal(2,i), m_normal(3,i));

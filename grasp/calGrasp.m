@@ -8,7 +8,6 @@ GRIPPER_Z_LIMIT    = para.GRIPPER_Z_LIMIT;
 MU                 = para.MU;
 GS_DENSITY         = para.GS_DENSITY;
 ANGLE_TOL          = para.ANGLE_TOL;
-verbosity          = para.verbosity;
 
 cone = atan(MU);
 
@@ -33,7 +32,7 @@ for i = 1:N_F-1
 	n1 = n1/area1/2;
 
 	% sample grasp points on face i
-	ns_i              = ceil(area1/GS_DENSITY);
+	ns_i                = ceil(area1/GS_DENSITY);
 	grasp_points_face_i = sampleTriUniform(p1(:,1), p1(:,2),p1(:,3), ns_i);
 
 	for j = i+1:N_F
@@ -54,6 +53,23 @@ for i = 1:N_F-1
 
 		% good, project grasp points
 		[grasp_points_face_j, in] = projectOntoTri(p2(:,1),p2(:,2),p2(:,3), grasp_points_face_i);
+		
+		% check distance to COM
+		for k = 1:size(grasp_points_face_i, 2)
+			if ~in(k)
+				continue;
+			end
+			a = norm(mesh.COM - grasp_points_face_i(:,k));
+			b = norm(mesh.COM - grasp_points_face_j(:,k));
+			c = norm(grasp_points_face_i(:,k) - grasp_points_face_j(:,k));
+			p = (a+b+c)/2;
+			area = sqrt(p*(p-a)*(p-b)*(p-c));
+			dist2COM = area*2/c;
+			if dist2COM > para.COM_DIST_LIMIT
+				in(k) = 0;
+			end
+		end
+
 		Nin = sum(in); 
 		grasp_points(:, grasp_count+1:grasp_count+Nin, 1) = grasp_points_face_i(:, in);
 		grasp_points(:, grasp_count+1:grasp_count+Nin, 2) = grasp_points_face_j(:, in);
@@ -73,17 +89,17 @@ for i = 1:grasp_count
 	grasp_quats(:,i) = quatBTVec(v,[1 0 0]');
 end
 
-% % visualize all the grasps
-% if verbosity >= 1
-% 	figure(1); hold on;
-% 	for i = 1:grasp_count
-% 	    gp = reshape(grasp_points(:,i,:), [3,2]);
-% 		% trisurf(mesh.faces, mesh.points(1,:), mesh.points(2,:), mesh.points(3,:), intersect*1.0, 'FaceAlpha', 0.3);
-% 		% plot3([orig(1) dest(1)], [orig(2) dest(2)], [orig(3) dest(3)], '-o','linewidth',3 );
-% 		plot3(gp(1,:), gp(2,:), gp(3,:), '-*','linewidth',2);
-% 		drawnow;
-% 	end
-% end
+% visualize all the grasps
+if para.showAllGraspSamples
+	figure(para.showAllGraspSamples_id); hold on;
+	for i = 1:grasp_count
+	    gp = reshape(grasp_points(:,i,:), [3,2]);
+		% trisurf(mesh.faces, mesh.points(1,:), mesh.points(2,:), mesh.points(3,:), intersect*1.0, 'FaceAlpha', 0.3);
+		% plot3([orig(1) dest(1)], [orig(2) dest(2)], [orig(3) dest(3)], '-o','linewidth',3 );
+		plot3(gp(1,:), gp(2,:), gp(3,:), '-*','linewidth',2);
+		drawnow;
+	end
+end
 
 % --------------------------------------------
 % 		Calculate collision free rotation range
@@ -114,41 +130,14 @@ grasps.range  = grasp_range;
 % --------------------------------------------
 m_grasps = ones(graph.NM, grasp_count);
 for i = 1:graph.NM
-	if para.verbosity >= 2
-		plotObject(mesh, 2, graph.quat(:,i));
+	if para.showCheckedGrasp
+		plotObject(mesh, para.showCheckedGrasp_id, graph.quat(:,i));
     end
-    
-    % find the bottom point, vertical offset
-    points_rot = mesh.points; % get dim
-    for j = 1:size(mesh.points,2)
-    	points_rot(:,j) = quatOnVec(mesh.points(:,j), graph.quat(:,i));
-    end
-    z_offset = min(points_rot(3,:));
-    
-	tilt_z_limit = sin(GRIPPER_TILT_LIMIT);
-	for j = 1:grasp_count
-		% rotate grasp
-		p1 = quatOnVec(grasp_points(:,j,1), graph.quat(:, i));
-		p2 = quatOnVec(grasp_points(:,j,2), graph.quat(:, i));
-		if (p1(3) - z_offset < GRIPPER_Z_LIMIT) || (p2(3) - z_offset< GRIPPER_Z_LIMIT) 
-			m_grasps(i, j) = 0;
-			continue;
-		end
 
-		b = p1 - p2; b = b/norm(b);
-		if abs(b(3)) > tilt_z_limit
-			m_grasps(i, j) = 0;
-			continue;
-		end
-
-		% visualization
-		if para.verbosity >= 2
-			plot3([p1(1) p2(1)], [p1(2) p2(2)], [p1(3) p2(3)], '*','markersize',8);
-		end
-	end
-
-
+    m_grasps(i,:) = checkGrasp(grasps, mesh, graph.quat(:,i), para);
 end
+
+graph.grasps = m_grasps;
 
 end
 

@@ -26,4 +26,6 @@ xlabel('X'); ylabel('Y'); zlabel('Z');
 
 axis equal;
 
+view(-43, 27);
+
 end
