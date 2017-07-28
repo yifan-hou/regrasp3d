@@ -2,6 +2,15 @@
 function q = getProperGrasp(gp1, gp2)
 v  = gp1 - gp2;
 v  = v/norm(v);
+
+if v(1) > 0.999999
+	q = [1 0 0 0]';
+	return;
+elseif v(1) < -0.999999
+	q = [0 0 0 -1]';
+	return;
+end
+
 q1 = quatBTVec([1 0 0]', v);
 
 u1 = quatOnVec([0 1 0]', q1);
@@ -24,5 +33,5 @@ end
 % % check:
 % v
 % quatOnVec([1 0 0]', q)
-% quatOnVec([0 1 0]', q)
+% % quatOnVec([0 1 0]', q)
 end
