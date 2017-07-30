@@ -139,6 +139,23 @@ end
 
 graph.grasps = m_grasps;
 
+
+% --------------------------------------------
+% 		Calculate contact mode graph 
+% --------------------------------------------
+m_connect_matrix = zeros(graph.NM);
+for i = 1:graph.NM
+	mi = graph.grasps(i,:);
+	for j = 1:graph.NM
+		mj = graph.grasps(j,:);
+		if any(mi&mj)
+			m_connect_matrix(i,j) = 1;
+		end
+	end
+end
+
+graph.connect_matrix = m_connect_matrix;
+
 end
 
 

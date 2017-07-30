@@ -88,6 +88,8 @@ for i = 1:NM
 	m_center(:,i) = mean(coordinates,2);
 end
 
+m_is_stable = ones(1, NM);
+
 % % pmodes: what modes does a point belong to
 % pmodes    = cell(NP,1);
 % pmodes{1} = [v1 e9 e4 e1  f1 f5 f4];
@@ -102,8 +104,8 @@ end
 fgraph.NM            = NM;
 fgraph.contact_area  = m_contact_area;
 fgraph.normal        = m_normal;
+fgraph.isStable		 = m_is_stable;
 fgraph.center        = m_center;
-fgraph.connectmatrix = m_connectmatrix;
 fgraph.quat          = m_quat;
 
 

@@ -95,7 +95,7 @@ for d = 1:2
     if s_dir(1) < 0
         ang2goal = 2*pi - ang2goal;
     end
-    disp(['Angle to goal:' num2str(ang2goal*180/pi)]);
+%     disp(['Angle to goal:' num2str(ang2goal*180/pi)]);
 
     % calculate possible initial rolling angle
     if s_dir(1) < 0

@@ -13,7 +13,7 @@ figure(fid);clf;hold on;
 % object
 h_vertices = plot3(points(1,:), points(2,:), points(3,:), '.');
 h_surf     = trisurf(mesh.faces',points(1,:), points(2,:), points(3,:), 'FaceAlpha', 0.3);
-h_cp	   = plot3(cp(1,:), cp(2,:), cp(3,:), '.k-', 'linewidth', 2, 'markersize', 30);
+h_cp	   = plot3(cp(1,:), cp(2,:), cp(3,:), '.k', 'markersize', 30);
 h_com	   = plot3(com(1), com(2), com(3), 'r*', 'markersize', 8);
 h_gravity  = plot3(com(1)+[0 0], com(2)+[0 0], com(3)+[0 -1], 'r-', 'linewidth', 2);
 % gripper
