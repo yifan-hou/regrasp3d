@@ -27,12 +27,12 @@ para.showAllGraspSamples    = false;
 para.showAllGraspSamples_id = 1;
 para.showCheckedGrasp       = false;
 para.showCheckedGrasp_id    = 3;
-para.showProblem            = false;
+para.showProblem            = true;
 para.showProblem_id         = [1 2 3];
 para.show2Dproblem          = false;
 para.show2Dproblem_id       = 4;
-para.show2DAnimation        = false;
-para.show2DAnimation_id     = 5;
+para.showAnimation          = true;
+para.showAnimation_id       = 5;
 % get object mesh
 [fgraph, pgraph, mesh] = getObject(para);
 
@@ -50,7 +50,6 @@ q0 = [1 0 0 0]';
 % qf = getOrientation();
 % save qf.mat qf
 load qf
-
 
 % get grasps for initial and final pose
 grasp_id_0 = checkGrasp(grasps, mesh, q0, para);
@@ -76,8 +75,6 @@ if any(grasp_id_f&grasp_id_0)
 end
 mode_grasps = [fgraph.grasps; grasp_id_0; grasp_id_f];
 
-
-
 path_counter = 1;
 while true
 	[~, mode_id_path] = dijkstra(connect_matrix, ones(fgraph.NM+2), fgraph.NM+1, fgraph.NM+2);
@@ -89,36 +86,46 @@ while true
 	end
 	disp(['[Path ' num2str(path_counter) '] length = ' num2str(NP) ]);
 
-	path_plan    = cell(1, NP-1);
-	path_qp      = zeros(4, NP-1);
-	path_graspid = zeros(1, NP-1);
-	path_found   = false;
+	path_q               = zeros(4, NP);
+	path_graspid         = zeros(1, NP-1);
+	path_qp              = zeros(4, NP-1);
+	path_gripper_plan_2d = cell(1,  NP-1);
+	path_found           = false;
 
 	% motion planning for each edge on the path
+	path_q(:,1) = q0;
 	for p = 1:NP-1
+		if p == NP-1
+			path_q(:,p+1) = qf;
+		else
+			path_qf(:,p+1) = fgraph.quat(:, mode_id_path(p+1));
+		end
+			
 		id_common = find(mode_grasps(mode_id_path(p),:) == mode_grasps(mode_id_path(p+1),:));	
 		assert(~isempty(id_common));
 		disp(['# Edge ' num2str(p) ', common grasps: ' num2str(length(id_common))]);
 
 		for i = 1:length(id_common)
-			path_graspid = id_common(i);
-			gp1o_w       = grasps.points(:,id_common(i), 1);
-			gp2o_w       = grasps.points(:,id_common(i), 2);
+			path_graspid(p) = id_common(i);
+			gp1o_w          = grasps.points(:,id_common(i), 1);
+			gp2o_w          = grasps.points(:,id_common(i), 2);
 
-			[path_plan{p}, path_qp] = planOneGrasp(mesh, gp1o_w, gp2o_w, q0, qf, pgraph, para);
+			[griper_plan_temp, qp_temp] = planOneGrasp(mesh, gp1o_w, gp2o_w, path_q(:,p), path_q(:,p+1), pgraph, para);
 
-		    if isempty(path_plan{p})
+		    if isempty(griper_plan_temp)
 		        disp([' -- Grasp ' num2str(i) ', No solution']);
 		        continue;
 		    else
+				path_gripper_plan_2d{p} = griper_plan_temp;
+				path_qp(:,p)            = qp_temp;
 		        disp([' -- Grasp ' num2str(i) ' works.']);
-		        disp(path_plan{p});
+		        disp(path_gripper_plan_2d{p});
 		        break;
 		    end
 			% gripper motion closed loop control
 		end
 
-		if isempty(path_plan{p})
+		if isempty(path_gripper_plan_2d{p})
 			disp(['# Edge ' num2str(p) ', No solution.']);
 			connect_matrix(mode_id_path(p), mode_id_path(p+1)) = 0;
 			connect_matrix(mode_id_path(p+1), mode_id_path(p)) = 0;
@@ -136,3 +143,11 @@ while true
 	end
 
 end % end graph search
+
+
+% -----------------------------------------
+% 	Animation
+% -----------------------------------------
+if path_found && para.showAnimation
+	animatePlan(mesh, grasps, para.showAnimation_id, path_q, path_graspid, path_qp, path_gripper_plan_2d);
+end

@@ -1,8 +1,14 @@
 % q: orientation of object
 % gp: original position of the grasp points
 % gq: orientation of gripper
-function plotGripper(fid, q, gp, gq)
-figure(fid); hold on;
+function plotGripper(fidOrhandle, q, gp, gq)
+if isnumeric(fidOrhandle)
+	figure(fidOrhandle);
+else
+	axes(fidOrhandle);
+end
+
+hold on;
 
 gp = reshape(gp,[3 2]);
 gp_q = gp; % get dimension
