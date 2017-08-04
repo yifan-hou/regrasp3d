@@ -62,6 +62,7 @@ guidata(hObject, handles);
 % uiwait(handles.figure1);
 addpath ../grasp
 addpath ../model
+addpath ../model/data
 clc
 
 % --- Outputs from this function are returned to the command line.
@@ -83,6 +84,7 @@ varargout{1} = handles.output;
 
 function BTN_load_model_Callback(hObject, eventdata, handles)
 global para fgraph pgraph mesh grasps q0 qf
+clc;
 % -----------------------------------------------
 % 		Offline-computation
 % -----------------------------------------------
@@ -107,16 +109,17 @@ para.showAllGraspSamples    = false;
 para.showAllGraspSamples_id = 1;
 para.showCheckedGrasp       = false;
 para.showCheckedGrasp_id    = 3;
-para.showProblem            = false;
+para.showProblem            = true;
 para.showProblem_id         = [1 2 3];
 para.show2Dproblem          = false;
 para.show2Dproblem_id       = 4;
 
 % get object mesh
-[fgraph, pgraph, mesh] = getObject(para);
+filename = 'sandpart2.stl';
+[fgraph, pgraph, mesh] = getObject(para, filename);
 
 % calculate grasps, and contact mode graph
-[grasps, fgraph] = calGrasp(fgraph, mesh, para);
+[grasps, fgraph] = calGrasp(fgraph, pgraph, mesh, para);
 
 % Plot the object
 plotObject(mesh, handles.AX_initial);
@@ -141,40 +144,42 @@ function BTN_plan_Callback(hObject, eventdata, handles)
 global para fgraph pgraph mesh grasps q0 qf % inputs
 global path_found path_q path_graspid path_qp path_gripper_plan_2d % outputs
 
+disp('[Planning] Planning begin.');
 % get grasps for initial and final pose
-grasp_id_0 = checkGrasp(grasps, mesh, q0, para);
-grasp_id_f = checkGrasp(grasps, mesh, qf, para);
+grasp_id_0 = checkGrasp(grasps, mesh, pgraph, q0, para);
+grasp_id_f = checkGrasp(grasps, mesh, pgraph, qf, para);
 
 % treat initial/final pose as additional mode
 % build the full graph
-connect_matrix = zeros(fgraph.NM+2);
-connect_matrix(1:fgraph.NM, 1:fgraph.NM) = fgraph.connect_matrix;
+disp('[Planning] Building Full Graph:');
+adj_matrix = zeros(fgraph.NM+2);
+adj_matrix(1:fgraph.NM, 1:fgraph.NM) = fgraph.adj_matrix;
 for m = 1:fgraph.NM
 	if any(grasp_id_0&fgraph.grasps(m,:))
-		connect_matrix(m, fgraph.NM+1) = 1;
-		connect_matrix(fgraph.NM+1, m) = 1;
+		adj_matrix(m, fgraph.NM+1) = 1;
+		adj_matrix(fgraph.NM+1, m) = 1;
 	end
 	if any(grasp_id_f&fgraph.grasps(m,:))
-		connect_matrix(m, fgraph.NM+2) = 1;
-		connect_matrix(fgraph.NM+2, m) = 1;
+		adj_matrix(m, fgraph.NM+2) = 1;
+		adj_matrix(fgraph.NM+2, m) = 1;
 	end
 end
 if any(grasp_id_f&grasp_id_0)
-	connect_matrix(fgraph.NM+1, fgraph.NM+2) = 1;
-	connect_matrix(fgraph.NM+2, fgraph.NM+1) = 1;
+	adj_matrix(fgraph.NM+1, fgraph.NM+2) = 1;
+	adj_matrix(fgraph.NM+2, fgraph.NM+1) = 1;
 end
 mode_grasps = [fgraph.grasps; grasp_id_0; grasp_id_f];
 
 path_counter = 1;
 while true
-	[~, mode_id_path] = dijkstra(connect_matrix, ones(fgraph.NM+2), fgraph.NM+1, fgraph.NM+2);
-	% mode_id_path = graph_search(connect_matrix, fgraph.NM+1, fgraph.NM+2);
-	NP           = length(mode_id_path);
+	[~, mode_id_path] = dijkstra(adj_matrix, ones(fgraph.NM+2), fgraph.NM+1, fgraph.NM+2);
+	NP                = length(mode_id_path);
 	if NP == 0
-		disp('[Conclusion] No solution found given the available grasps.');
+		disp('[Planning] No solution found given the available grasps.');
 		break;
 	end
-	disp(['[Path ' num2str(path_counter) '] length = ' num2str(NP) ]);
+	disp(['[Planning] Trying Path #' num2str(path_counter) ', Path length = ' num2str(NP) ]);
+	disp('[Planning] Planning for each edge on the path: ');
 
 	path_q               = zeros(4, NP);
 	path_graspid         = zeros(1, NP-1);
@@ -188,37 +193,44 @@ while true
 		if p == NP-1
 			path_q(:,p+1) = qf;
 		else
-			path_qf(:,p+1) = fgraph.quat(:, mode_id_path(p+1));
+			path_q(:,p+1) = fgraph.quat(:, mode_id_path(p+1));
 		end
 			
 		id_common = find(mode_grasps(mode_id_path(p),:) == mode_grasps(mode_id_path(p+1),:));	
 		assert(~isempty(id_common));
-		disp(['# Edge ' num2str(p) ', common grasps: ' num2str(length(id_common))]);
-
+		disp(['  Edge #' num2str(p) ', common grasps: ' num2str(length(id_common))]);
 		for i = 1:length(id_common)
 			path_graspid(p) = id_common(i);
 			gp1o_w          = grasps.points(:,id_common(i), 1);
 			gp2o_w          = grasps.points(:,id_common(i), 2);
 
-			[griper_plan_temp, qp_temp] = planOneGrasp(mesh, gp1o_w, gp2o_w, path_q(:,p), path_q(:,p+1), pgraph, para);
+			[griper_plan_temp, qp_temp, flag] = planOneGrasp(mesh, gp1o_w, gp2o_w, path_q(:,p), path_q(:,p+1), pgraph, para);
 
-		    if isempty(griper_plan_temp)
-		        disp([' -- Grasp ' num2str(i) ', No solution']);
+		    if flag <= 0
+                switch flag
+                    case -1
+                        disp(['  --- Grasp ' num2str(i) ' Required rolling exceeds gripper tilt limit']);
+                    case -3
+                        disp(['  --- Grasp ' num2str(i) ' Initial grasp pos violates gripper tilt limit ']);
+                    case -4
+                        disp(['  --- Grasp ' num2str(i) ' Initial grasp pos violates gripper Z limit ']);
+                    otherwise
+                        error('Wrong flag');
+                end
 		        continue;
 		    else
 				path_gripper_plan_2d{p} = griper_plan_temp;
 				path_qp(:,p)            = qp_temp;
-		        disp([' -- Grasp ' num2str(i) ' works.']);
-		        disp(path_gripper_plan_2d{p});
+		        disp(['  --- Grasp ' num2str(i) ' works.']);
 		        break;
 		    end
 			% gripper motion closed loop control
 		end
 
 		if isempty(path_gripper_plan_2d{p})
-			disp(['# Edge ' num2str(p) ', No solution.']);
-			connect_matrix(mode_id_path(p), mode_id_path(p+1)) = 0;
-			connect_matrix(mode_id_path(p+1), mode_id_path(p)) = 0;
+			disp(['  Edge #' num2str(p) ' No solution.']);
+			adj_matrix(mode_id_path(p), mode_id_path(p+1)) = 0;
+			adj_matrix(mode_id_path(p+1), mode_id_path(p)) = 0;
 			break;
 		elseif p == NP-1
 			path_found = true;
@@ -227,8 +239,7 @@ while true
 	end % end a path
 
 	if path_found
-		disp('[Conclusion] Solution found. ');
-% 		disp(path_found);
+		disp(['[Planning] Solution found. Length = ' num2str(NP) ]);
 		break;
 	end
 

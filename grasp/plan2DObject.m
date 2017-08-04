@@ -2,11 +2,17 @@
 % 	g: 3x1, direction of gravity projection
 % 	goal: 3x1, direction of goal gripper angle
 % 	com: 3x1, position of COM
-% 	ps: 3xN, points on mesh model (potential contact points with ground)
 %   gp: 3x2, 3D position of grasp points in grasp frame
-% 	Rw_2d: rotation matrix from world to grasp frame
-% 	cmat: NxN, connectivity matrix of points
-function	[plan, init_roll_ang] = plan2DObject(g, goal, com, ps, gp, Rw_2d, cmat, para)
+%   Rw_2d: rotation matrix from world to grasp frame
+% 	ps: 3xN, points on convex hull (potential contact points with ground)
+% 	cmat: NxN, connectivity matrix of points on convex hull
+% outputs:
+%   flag:
+%       1: success
+%       -1: required rolling exceeds gripper tilt limit
+%       -3: initial grasp pos violates gripper tilt limit 
+%       -4: initial grasp pos violates gripper Z limit 
+function	[plan, init_roll_ang, flag] = plan2DObject(g, goal, com, gp, Rw_2d, ps, cmat, para)
 % rotate so that gy points down
 R      = matBTVec([g(1:2); 0], [0 -1 0]');
 g      = R*g; % should be [0 -1 ?]
@@ -27,11 +33,13 @@ cp         = ps(:,cp_id);
 if init(2) < cos(para.GRIPPER_TILT_LIMIT)
 	plan = [];
     init_roll_ang = [];
+    flag = -3;
 	return;
 end
 if ((cp-gp(:,1))'*g < para.GRIPPER_Z_LIMIT) || ((cp-gp(:,2))'*g < para.GRIPPER_Z_LIMIT)
 	plan = [];
     init_roll_ang = [];
+    flag = -4;
 	return;
 end
 
@@ -128,7 +136,7 @@ for d = 1:2
                 cpid2        = adj_p_id(id_same);
                 tempid       = cmat(s_cpid,:); tempid(cpid2) = 0;
                 tempid2      = cmat(cpid2,:); tempid2(s_cpid) = 0;
-                adj_p_id = [find(tempid) find(tempid2)];
+                adj_p_id     = [find(tempid) find(tempid2)];
                 contact_vecs = [s_ps(:, find(tempid)) - s_ps(:, s_cpid), s_ps(:, find(tempid2)) - s_ps(:, cpid2)];
             end
         end
@@ -151,7 +159,7 @@ for d = 1:2
         
         flag_finish_now = 0;
         if ang2goal_remaining < ang2next
-            ang2next = ang2goal_remaining;
+            ang2next        = ang2goal_remaining;
             flag_finish_now = 1;
         end
         
@@ -160,7 +168,6 @@ for d = 1:2
         if s_rtype(1) == -1
             % no we can't
             s_dir = - s_dir;
-            disp('Rotation failed: constraints violated.');
             break; % stop current rolling, try the other direction
         end
         motion          = [motion s_motion];
@@ -194,7 +201,6 @@ for d = 1:2
             end
             axis equal
             drawnow
-            disp('Rotated to next contact.');
         end
         
         s_cpid  = adj_p_id(id); % new contact point
@@ -207,11 +213,11 @@ for d = 1:2
                 % good! record
                 feasible_dir   = s_dir(1);
                 object_motion_feasible = true;
-                disp('2D planning is successful.');
+                flag = 1; % successful
                 break;
             else
                 s_dir = - s_dir;
-                disp('2D planning failed: Required rolling is too large.');
+                flag = -1; 
                 break;
             end            
         end

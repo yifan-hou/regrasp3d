@@ -1,4 +1,4 @@
-function [gripper_plan_2d, qp] = planOneGrasp(mesh, gp1o_w, gp2o_w, q0, qf, pgraph, para )
+function [gripper_plan_2d, qp, flag] = planOneGrasp(mesh, gp1o_w, gp2o_w, q0, qf, pgraph, para )
 
 % -----------------------------------------
 % 	Prepare the 2D problem
@@ -12,6 +12,12 @@ qgrasp0_w = getProperGrasp(gp10_w, gp20_w); % grasp frame for q0, under world co
 gp1f_w    = quatOnVec(gp1o_w, qf);
 gp2f_w    = quatOnVec(gp2o_w, qf);
 qgraspf_w = getProperGrasp(gp1f_w, gp2f_w); % grasp frame for qf, under world coordinate
+
+% check grasp frame
+temp = gp10_w - gp20_w;
+tempv = quatOnVec([1 0 0]', qgrasp0_w);
+assert( abs(angBTVec(temp, tempv)) < 1e-7);
+
 
 % roll - pivot - roll
 % sample a few orientations for pivoting.
@@ -45,7 +51,7 @@ graspfpz_grasp0p_right = aaOnVec(graspfpz_grasp0p, -para.GRIPPER_TILT_LIMIT, [1 
 % position of points
 qp_grasp0p      = quatMTimes(quatInv(qgrasp0p_w), qp);
 COMp_grasp0p    = quatOnVec(mesh.COM, qp_grasp0p);
-pointsp_grasp0p = quatOnVec(mesh.points, qp_grasp0p);
+pointsp_grasp0p = quatOnVec(mesh.points(:, pgraph.points_id), qp_grasp0p);
 gp1p_grasp0p    = quatOnVec(gp1o_w, qp_grasp0p);
 gp2p_grasp0p    = quatOnVec(gp2o_w, qp_grasp0p);
 
@@ -70,11 +76,10 @@ Rw_2d             = Rgrasp0p_2d*Rw_grasp0p;
 % -----------------------------------------
 % 	Solve the 2D problem
 % -----------------------------------------
+[object_plan_2d, init_grasp_ang, flag] = plan2DObject(gravity_2d, graspfpz_2d, COMp_2d, gpp_2d, ...
+												Rw_2d, pointsp_2d, pgraph.adj_matrix, para);
 
-[object_plan_2d, init_grasp_ang] = plan2DObject(gravity_2d, graspfpz_2d, COMp_2d, pointsp_2d, ... 
-                              			     gpp_2d, Rw_2d, pgraph.connectmatrix, para);
-
-if isempty(object_plan_2d)
+if flag <= 0
 	gripper_plan_2d = [];
 	qp = [];
 	return;
@@ -106,19 +111,19 @@ gripper_plan_2d = plan2DGripper(object_plan_2d, init_grasp_ang, para);
 m0p_w      = quat2m(q0p_w);
 gp10p_w    = m0p_w*gp10_w;
 gp20p_w    = m0p_w*gp20_w;
-COM0p_w    = m0p_w*quatOnVec(mesh.COM, q0);
-points0p_w = m0p_w*quatOnVec(mesh.points, q0);
+% COM0p_w    = m0p_w*quatOnVec(mesh.COM, q0);
+% points0p_w = m0p_w*quatOnVec(mesh.points, q0);
 
 % Check 3: world frame check
 qgrasp_now = qgrasp0p_w;
-q_now = qp;
-n = gp10p_w - gp20p_w; n = n/norm(n);
-n = -n*gripper_plan_2d.dir;
+q_now      = qp;
+n          = gp10p_w - gp20p_w; n = n/norm(n);
+n          = -n*gripper_plan_2d.dir;
 for ii = 1:length(gripper_plan_2d.gripper_motion)
-    qgrasp_now = quatMTimes(aa2quat(gripper_plan_2d.gripper_motion(ii), n), qgrasp_now);
-    q_now = quatMTimes(aa2quat(gripper_plan_2d.object_motion(ii), n), q_now);
+	qgrasp_now = quatMTimes(aa2quat(gripper_plan_2d.gripper_motion(ii), n), qgrasp_now);
+	q_now      = quatMTimes(aa2quat(gripper_plan_2d.object_motion(ii), n), q_now);
 end
-q_goal = quatMTimes(quatInv(qp), qgraspfp_w);
+q_goal    = quatMTimes(quatInv(qp), qgraspfp_w);
 q_achieve = quatMTimes(quatInv(q_now), qgrasp_now);
 
 assert(angBTquat(q_goal, q_achieve) < 1e-4); 

@@ -22,9 +22,9 @@ gp2o_w    = grasps.points(:,path_graspid(1), 2);
 gp10_w    = quatOnVec(gp1o_w, q0);
 gp20_w    = quatOnVec(gp2o_w, q0);
 qgrasp0_w = getProperGrasp(gp10_w, gp20_w); % grasp frame for q0, under world coordinate
-dir    = quatOnVec([0 0 1]', qgrasp0_w);
-gbase1 = gp10_w + 2*dir;
-gbase2 = gp20_w + 2*dir;
+dir       = quatOnVec([0 0 1]', qgrasp0_w);
+gbase1    = gp10_w + 2*dir;
+gbase2    = gp20_w + 2*dir;
 
 if isnumeric(fidOrhandle)
 	figure(fidOrhandle);
@@ -37,11 +37,18 @@ end
 hold on;
 % object
 h_vertices = plot3(points_w(1,:), points_w(2,:), points_w(3,:), '.');
-h_surf     = trisurf(mesh.faces',points_w(1,:), points_w(2,:), points_w(3,:), 'Facecolor', 'b', 'FaceAlpha', 0.3);
 h_cp	   = plot3(cp(1,:), cp(2,:), cp(3,:), '.k', 'markersize', 30);
 h_com	   = plot3(com_w(1), com_w(2), com_w(3), 'r*', 'markersize', 8);
-h_gravity  = plot3(com_w(1)+[0 0], com_w(2)+[0 0], com_w(3)+[0 -1], 'r-', 'linewidth', 2);
-
+h_gravity  = plot3(com_w(1)+[0 0], com_w(2)+[0 0], com_w(3)+[0 -0.4], 'r-', 'linewidth', 2);
+% h_surf     = trisurf(mesh.faces', points_w(1,:), points_w(2,:), points_w(3,:), 'Facecolor', 'b', 'FaceAlpha', 0.3);
+h_surf     = patch('Faces',           mesh.faces',   ...
+				   'Vertices',        mesh.points',  ...
+				   'FaceColor',       [0.8 0.8 1.0], ...
+			       'EdgeColor',       'none',        ...
+			       'FaceLighting',    'gouraud',     ...
+			       'AmbientStrength', 0.15);
+camlight('headlight');
+material('dull');
 % fingertip
 h_fingertip = plot3([gp10_w(1) gp20_w(1)], [gp10_w(2) gp20_w(2)], [gp10_w(3) gp20_w(3)], 'r.', 'markersize',40); 
 
@@ -52,6 +59,7 @@ h_gripper = plot3([gp10_w(1) gbase1(1) gbase2(1) gp20_w(1)],...
 				  '-k','linewidth',8);
 
 xlabel('X'); ylabel('Y'); zlabel('Z');
+axis([com_w(1)-1 com_w(1)+1 com_w(2)-1 com_w(2)+1 com_w(3)-1 com_w(3)+1]);
 axis equal;
 view(-43, 27);
 
@@ -214,7 +222,8 @@ function updatePlot(Robj, Rgrp, gp1, gp2, com, points, dir, h_vertices, h_cp, h_
 	h_gripper.ZData   = [gp1_(3) gbase1_(3) gbase2_(3) gp2_(3)];
 	h_surf.Vertices   = ps_';
 
-	axis([com_(1)-4 com_(1)+4 com_(2)-4 com_(2)+4 com_(3)-3 com_(3)+5]);
+
+	axis([com_(1)-1 com_(1)+1 com_(2)-1 com_(2)+1 com_(3)-1 com_(3)+1]);
 
 	drawnow;
 end

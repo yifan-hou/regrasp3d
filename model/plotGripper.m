@@ -16,11 +16,11 @@ gp_q(:,1) = quatOnVec(gp(:,1), q);
 gp_q(:,2) = quatOnVec(gp(:,2), q);
 
 dir = quatOnVec([0 0 1]', gq);
-base = gp_q + 2*dir*[1 1];
+base = gp_q + 1*dir*[1 1];
 
 % fingertip
-plot3(gp_q(1,:), gp_q(2,:), gp_q(3,:), 'r.', 'markersize',40); 
+plot3(gp_q(1,:), gp_q(2,:), gp_q(3,:), 'r.', 'markersize', 30); 
 % finger
-plot3([gp_q(1,1) base(1,1) base(1,2) gp_q(1,2)], [gp_q(2,1) base(2,1) base(2,2) gp_q(2,2)], [gp_q(3,1) base(3,1) base(3,2) gp_q(3,2)], '-k','linewidth',8);
+plot3([gp_q(1,1) base(1,1) base(1,2) gp_q(1,2)], [gp_q(2,1) base(2,1) base(2,2) gp_q(2,2)], [gp_q(3,1) base(3,1) base(3,2) gp_q(3,2)], '-k','linewidth', 5);
 
 end

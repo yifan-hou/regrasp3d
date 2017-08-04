@@ -21,15 +21,19 @@ end
 
 hold on;
 plot3(mesh.points(1,:), mesh.points(2,:), mesh.points(3,:), '.');
-text(mesh.points(1,1),mesh.points(2,1),mesh.points(3,1),  'p1');
-text(mesh.points(1,2),mesh.points(2,2),mesh.points(3,2),  'p2');
-text(mesh.points(1,3),mesh.points(2,3),mesh.points(3,3),  'p3');
-text(mesh.points(1,4),mesh.points(2,4),mesh.points(3,4),  'p4');
-text(mesh.points(1,5),mesh.points(2,5),mesh.points(3,5),  'p5');
-text(mesh.points(1,6),mesh.points(2,6),mesh.points(3,6),  'p6');
-text(mesh.points(1,7),mesh.points(2,7),mesh.points(3,7),  'p7');
-text(mesh.points(1,8),mesh.points(2,8),mesh.points(3,8),  'p8');
-trisurf(mesh.faces',mesh.points(1,:), mesh.points(2,:), mesh.points(3,:), 'Facecolor', 'b','FaceAlpha', 0.3);
+% trisurf(mesh.faces',mesh.points(1,:), mesh.points(2,:), mesh.points(3,:), 'Facecolor', 'b','FaceAlpha', 0.3);
+patch('Faces', mesh.faces', ...
+	  'Vertices', mesh.points', ...
+	  'FaceColor',       [0.8 0.8 1.0], ...
+      'EdgeColor',       'none',        ...
+      'FaceLighting',    'gouraud',     ...
+      'AmbientStrength', 0.15);
+
+% Add a camera light, and tone down the specular highlighting
+camlight('headlight');
+material('dull');
+
+
 xlabel('X'); ylabel('Y'); zlabel('Z');
 
 axis equal;

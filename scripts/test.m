@@ -1,6 +1,5 @@
 clfAll;clear;clc;
 
-
 addpath ../grasp
 addpath ../model
 
@@ -39,8 +38,6 @@ para.showAnimation_id       = 5;
 % calculate grasps, and contact mode graph
 [grasps, fgraph] = calGrasp(fgraph, mesh, para);
 
-
-
 % -----------------------------------------------
 % 		Online computation
 % -----------------------------------------------
@@ -52,34 +49,34 @@ q0 = [1 0 0 0]';
 load qf
 
 % get grasps for initial and final pose
-grasp_id_0 = checkGrasp(grasps, mesh, q0, para);
-grasp_id_f = checkGrasp(grasps, mesh, qf, para);
+grasp_id_0 = checkGrasp(grasps, mesh, pgraph, q0, para);
+grasp_id_f = checkGrasp(grasps, mesh, pgraph, qf, para);
 
 % treat initial/final pose as additional mode
 % build the full graph
-connect_matrix = zeros(fgraph.NM+2);
-connect_matrix(1:fgraph.NM, 1:fgraph.NM) = fgraph.connect_matrix;
+adj_matrix = zeros(fgraph.NM+2);
+adj_matrix(1:fgraph.NM, 1:fgraph.NM) = fgraph.adj_matrix;
 for m = 1:fgraph.NM
 	if any(grasp_id_0&fgraph.grasps(m,:))
-		connect_matrix(m, fgraph.NM+1) = 1;
-		connect_matrix(fgraph.NM+1, m) = 1;
+		adj_matrix(m, fgraph.NM+1) = 1;
+		adj_matrix(fgraph.NM+1, m) = 1;
 	end
 	if any(grasp_id_f&fgraph.grasps(m,:))
-		connect_matrix(m, fgraph.NM+2) = 1;
-		connect_matrix(fgraph.NM+2, m) = 1;
+		adj_matrix(m, fgraph.NM+2) = 1;
+		adj_matrix(fgraph.NM+2, m) = 1;
 	end
 end
 if any(grasp_id_f&grasp_id_0)
-	connect_matrix(fgraph.NM+1, fgraph.NM+2) = 1;
-	connect_matrix(fgraph.NM+2, fgraph.NM+1) = 1;
+	adj_matrix(fgraph.NM+1, fgraph.NM+2) = 1;
+	adj_matrix(fgraph.NM+2, fgraph.NM+1) = 1;
 end
-mode_grasps = [fgraph.grasps; grasp_id_0; grasp_id_f];
+mode_grasps  = [fgraph.grasps; grasp_id_0; grasp_id_f];
 
 path_counter = 1;
 while true
-	[~, mode_id_path] = dijkstra(connect_matrix, ones(fgraph.NM+2), fgraph.NM+1, fgraph.NM+2);
-	% mode_id_path = graph_search(connect_matrix, fgraph.NM+1, fgraph.NM+2);
-	NP           = length(mode_id_path);
+	[~, mode_id_path] = dijkstra(adj_matrix, ones(fgraph.NM+2), fgraph.NM+1, fgraph.NM+2);
+	NP                = length(mode_id_path);
+	% mode_id_path = graph_search(adj_matrix, fgraph.NM+1, fgraph.NM+2);
 	if NP == 0
 		disp('[Conclusion] No solution found given the available grasps.');
 		break;
@@ -127,8 +124,8 @@ while true
 
 		if isempty(path_gripper_plan_2d{p})
 			disp(['# Edge ' num2str(p) ', No solution.']);
-			connect_matrix(mode_id_path(p), mode_id_path(p+1)) = 0;
-			connect_matrix(mode_id_path(p+1), mode_id_path(p)) = 0;
+			adj_matrix(mode_id_path(p), mode_id_path(p+1)) = 0;
+			adj_matrix(mode_id_path(p+1), mode_id_path(p)) = 0;
 			break;
 		elseif p == NP-1
 			path_found = true;

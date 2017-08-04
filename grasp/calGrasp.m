@@ -1,31 +1,31 @@
-function [grasps, graph] = calGrasp(graph, mesh, para)
-
+% sample grasps; calculate contact mode graph
+function [grasps, fgraph] = calGrasp(fgraph, pgraph, mesh, para)
+disp('[CalGrasp] Sampling Grasp Positions.');
 % --------------------------------------------
 % 		Parameters
 % --------------------------------------------
-GRIPPER_TILT_LIMIT = para.GRIPPER_TILT_LIMIT;
-GRIPPER_Z_LIMIT    = para.GRIPPER_Z_LIMIT;
-MU                 = para.MU;
+% MU                 = para.MU;
 GS_DENSITY         = para.GS_DENSITY;
 ANGLE_TOL          = para.ANGLE_TOL;
 
-cone = atan(MU);
+% cone = atan(MU);
 
 % --------------------------------------------
 % 		sample grasp positions
 % --------------------------------------------
+disp('[CalGrasp] Sampling Grasp Positions.');
 N_F          = size(mesh.faces, 2); % number of faces
 grasp_points = zeros(3, N_F*50, 2);
 grasp_count  = 0;
 
 for i = 1:N_F-1
-	p1 = zeros(3);
-	p2 = zeros(3);
+	p1      = zeros(3);
+	p2      = zeros(3);
 	p1(:,1) = mesh.points(:, mesh.faces(1, i));
 	p1(:,2) = mesh.points(:, mesh.faces(2, i));
 	p1(:,3) = mesh.points(:, mesh.faces(3, i));
-	n1 = cross(p1(:,1) - p1(:,2), p1(:,3) - p1(:,2));
-	area1 = norm(n1)/2;
+	n1      = cross(p1(:,1) - p1(:,2), p1(:,3) - p1(:,2));
+	area1   = norm(n1)/2;
 	if area1 < 1e-7
 		continue;
 	end
@@ -79,8 +79,7 @@ end
 
 grasp_points(:, grasp_count+1:end,:) = [];
 
-disp('Number of candidate grasps:');
-disp(grasp_count);
+disp(['[CalGrasp] Number of candidate grasps: ' num2str(grasp_count)]);
 
 % calculate quaternions for each grasp
 grasp_quats = zeros(4, grasp_count);
@@ -91,13 +90,12 @@ end
 
 % visualize all the grasps
 if para.showAllGraspSamples
+	disp('[CalGrasp] Visualizing all grasps:');
 	figure(para.showAllGraspSamples_id); hold on;
 	for i = 1:grasp_count
 	    gp = reshape(grasp_points(:,i,:), [3,2]);
-		% trisurf(mesh.faces, mesh.points(1,:), mesh.points(2,:), mesh.points(3,:), intersect*1.0, 'FaceAlpha', 0.3);
-		% plot3([orig(1) dest(1)], [orig(2) dest(2)], [orig(3) dest(3)], '-o','linewidth',3 );
 		plot3(gp(1,:), gp(2,:), gp(3,:), '-*','linewidth',2);
-		drawnow;
+		% drawnow;
 	end
 end
 
@@ -128,33 +126,36 @@ grasps.range  = grasp_range;
 % 		Calculate feasible grasps 
 % 		for each node
 % --------------------------------------------
-m_grasps = ones(graph.NM, grasp_count);
-for i = 1:graph.NM
+disp('[CalGrasp] Computing feasible grasps for each mode:');
+m_grasps = ones(fgraph.NM, grasp_count);
+for i = 1:fgraph.NM
 	if para.showCheckedGrasp
-		plotObject(mesh, para.showCheckedGrasp_id, graph.quat(:,i));
+		plotObject(mesh, para.showCheckedGrasp_id, fgraph.quat(:,i));
     end
 
-    m_grasps(i,:) = checkGrasp(grasps, mesh, graph.quat(:,i), para);
+    m_grasps(i,:) = checkGrasp(grasps, mesh, pgraph, fgraph.quat(:,i), para);
 end
 
-graph.grasps = m_grasps;
+fgraph.grasps = m_grasps;
 
-
+disp('[CalGrasp] Computing contact mode graph:');
 % --------------------------------------------
-% 		Calculate contact mode graph 
+% 		Calculate contact mode fgraph 
 % --------------------------------------------
-m_connect_matrix = zeros(graph.NM);
-for i = 1:graph.NM
-	mi = graph.grasps(i,:);
-	for j = 1:graph.NM
-		mj = graph.grasps(j,:);
+m_adj_matrix = zeros(fgraph.NM);
+for i = 1:fgraph.NM
+	mi = fgraph.grasps(i,:);
+	for j = 1:fgraph.NM
+		mj = fgraph.grasps(j,:);
 		if any(mi&mj)
-			m_connect_matrix(i,j) = 1;
+			m_adj_matrix(i,j) = 1;
 		end
 	end
 end
 
-graph.connect_matrix = m_connect_matrix;
+fgraph.adj_matrix = m_adj_matrix;
+
+disp('[CalGrasp] Done.');
 
 end
 

@@ -3,18 +3,22 @@ function q = getProperGrasp(gp1, gp2)
 v  = gp1 - gp2;
 v  = v/norm(v);
 
-if v(1) > 0.999999
-	q = [1 0 0 0]';
-	return;
-elseif v(1) < -0.999999
-	q = [0 0 0 -1]';
-	return;
-end
-
 q1 = quatBTVec([1 0 0]', v);
+
+if abs(v(3)) < 1e-5
+    q = q1;
+    return;
+end
 
 u1 = quatOnVec([0 1 0]', q1);
 u  = cross(v, [0 0 1]');
+
+if norm(u) < 1e-5
+    % grasp axis is vertical....
+    % q should get rejected in planning anyway
+    q = q1;
+    return;
+end
 
 % get the rotation that rotates u1 to u
 % then apply it to q1
