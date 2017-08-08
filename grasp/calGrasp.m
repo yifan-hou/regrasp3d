@@ -17,7 +17,7 @@ grasp_points = zeros(3, NGS, 2);
 grasp_count  = 0;
 
 % 1. sample NGS points on the mesh surface
-samples    = mnrnd(NGS, mesh.area/norm(mesh.area));
+samples    = mnrnd(NGS, mesh.area/sum(mesh.area));
 id_sampled = find(samples > 0);
 
 % 2. for each point, check the grasp
@@ -34,7 +34,10 @@ for i = 1:length(id_sampled)
 	ns_i                = samples(id_sampled(i));
 	grasp_points_face_i = sampleTriUniform(p1(:,1), p1(:,2),p1(:,3), ns_i);
 
-	for j = 1:N_F
+	for j = 1:size(mesh.faces, 2)
+		if id_sampled(i) == j
+			continue;
+		end
 		p2(:,1) = mesh.points(:, mesh.faces(1, j));
 		p2(:,2) = mesh.points(:, mesh.faces(2, j));
 		p2(:,3) = mesh.points(:, mesh.faces(3, j));

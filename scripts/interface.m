@@ -103,9 +103,9 @@ para.GOALSAMPLEDENSITY2D = 15*pi/180; % 1 sample every 5 degree
 para.PIVOTABLE_CHECK_GRANULARITY = 1*pi/180; % 1 sample every 1 degree
 
 % Popups 
-para.showObject             = false; % show object and the simplified object
-para.showObject_id          = [1 2];
-para.showAllGraspSamples    = false;
+para.showObject             = true; % show object and the simplified object
+para.showObject_id          = [1 2 3];
+para.showAllGraspSamples    = true;
 para.showAllGraspSamples_id = 1;
 para.showCheckedGrasp       = false;
 para.showCheckedGrasp_id    = 3;

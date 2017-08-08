@@ -126,8 +126,11 @@ disp('[GetObject] Model Processing Done.');
 % --------------------------------------------
 if para.showObject
 	disp('[GetObject] Plotting Object:');
+	% full mesh
+	plotObject(mesh, para.showObject_id(1));
+
 	% convex hull
-	figure(para.showObject_id(1)); clf; hold on;
+	figure(para.showObject_id(2)); clf; hold on;
 	plot3(fv.vertices(fvc_id, 1), fv.vertices(fvc_id, 2), fv.vertices(fvc_id, 3), '.');
 	patch('Faces', fvc_id, 					...
 		  'vertices', fv.vertices,  		...
@@ -137,7 +140,7 @@ if para.showObject
 	      'AmbientStrength', 0.15);
 	camlight('headlight'); material('dull'); axis equal; view(-43, 27);
 	% Decimated convex hull
-	figure(para.showObject_id(2)); clf; hold on;
+	figure(para.showObject_id(3)); clf; hold on;
 	plot3(fvr.vertices(:,1), fvr.vertices(:,2), fvr.vertices(:,3), '.');
 	patch(fvr, ...
 		  'FaceColor',       [0.8 0.8 1.0], ...
