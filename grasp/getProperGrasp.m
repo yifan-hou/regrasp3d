@@ -11,7 +11,8 @@ if abs(v(3)) < 1e-5
 end
 
 u1 = quatOnVec([0 1 0]', q1);
-u  = cross(v, [0 0 1]');
+% u  = cross(v, [0 0 1]'); % wrong
+u  = cross([0 0 1]', v);
 
 if norm(u) < 1e-5
     % grasp axis is vertical....
