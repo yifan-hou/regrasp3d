@@ -12,7 +12,7 @@
 %       -1: required rolling exceeds gripper tilt limit
 %       -3: initial grasp pos violates gripper tilt limit 
 %       -4: initial grasp pos violates gripper Z limit 
-function	[plan, init_roll_ang, flag] = plan2DObject(g, goal, com, gp, Rw_2d, ps, cmat, para)
+function	[plan, init_roll_ang, flag] = plan2DObject(g, goal, com, gp, Rw_2d, ps, ps_err, cmat, para)
 % rotate so that gy points down
 R      = matBTVec([g(1:2); 0], [0 -1 0]');
 g      = R*g; % should be [0 -1 ?]
@@ -164,10 +164,11 @@ for d = 1:2
         end
         
         % can we do this rotation?
-        [s_motion, s_rtype] = calRotation(s_com, s_cp, ang2next, -z*s_dir(1), gp, g, para);
+        [s_motion, s_rtype] = calRotation(s_com, s_cp, ang2next, -z*s_dir(1), gp, g, ps_err, para);
         if s_rtype(1) == -1
             % no we can't
             s_dir = - s_dir;
+            flag  = -1; % flag could be re-written later, if success
             break; % stop current rolling, try the other direction
         end
         motion          = [motion s_motion];
@@ -206,7 +207,6 @@ for d = 1:2
         s_cpid  = adj_p_id(id); % new contact point
         s_cp    = s_ps(:, s_cpid);
         
-        
         if flag_finish_now
             % further check the whole trajectory, determine feasibility
             if checkTraj(motion, rtype, init_roll_ang, para)
@@ -237,10 +237,12 @@ end
 
 end
 
-
-function pivotable = checkPivotability(com, cp, gp, g, para)
+% -1: infeasible
+%  0: can do roll
+%  1: can do pivot
+function pivotable = checkPivotability(com, cp, gp, g, ps_err, para)
 	pivotable = 0;
-	if com(1)*cp(1) > 0
+	if ((cp(1)-ps_err)*com(1) > 0) && ((cp(1)+ps_err)*com(1))
 		pivotable = 1;
 	end
 	if ((cp-gp(:,1))'*g < para.GRIPPER_Z_LIMIT)||((cp-gp(:,2))'*g < para.GRIPPER_Z_LIMIT)
@@ -249,14 +251,14 @@ function pivotable = checkPivotability(com, cp, gp, g, para)
 end
 
 % z: rotation axis of object
-function [motion, rtype] = calRotation(com, cp, ang, z, gp, g, para)
+function [motion, rtype] = calRotation(com, cp, ang, z, gp, g, ps_err, para)
 	N = floor(ang/para.PIVOTABLE_CHECK_GRANULARITY);
 	pivotable = zeros(1, N+1);
 	for i = 0:N
 		ang_i = i*para.PIVOTABLE_CHECK_GRANULARITY;
 		com_i = aaOnVec(com, ang_i, z);
 		cp_i  = aaOnVec(cp, ang_i, z);
-		pivotable(i+1) = checkPivotability(com_i, cp_i, gp, g, para);
+		pivotable(i+1) = checkPivotability(com_i, cp_i, gp, g, ps_err, para);
 	end
 
 	if any(pivotable < 0)

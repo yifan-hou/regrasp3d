@@ -93,7 +93,7 @@ para.GRIPPER_Z_LIMIT    = 0.2; % finger position limit
 % friction between object and  ground
 para.MU = 0.5;
 % grasp pos sample density
-para.GS_DENSITY = 0.1; % 1 point every 0.1 m^2
+para.GS_DENSITY = 0.05; % 1 point every 0.1 m^2
 % grasp axis tolerance
 para.ANGLE_TOL = 0.1; % rad
 para.COM_DIST_LIMIT = 0.8; % meter
@@ -103,18 +103,19 @@ para.GOALSAMPLEDENSITY2D = 15*pi/180; % 1 sample every 5 degree
 para.PIVOTABLE_CHECK_GRANULARITY = 1*pi/180; % 1 sample every 1 degree
 
 % Popups 
-para.showObject             = false;
-para.showObject_id          = 1;
+para.showObject             = false; % show object and the simplified object
+para.showObject_id          = [1 2];
 para.showAllGraspSamples    = false;
 para.showAllGraspSamples_id = 1;
 para.showCheckedGrasp       = false;
 para.showCheckedGrasp_id    = 3;
-para.showProblem            = true;
+para.showProblem            = false;
 para.showProblem_id         = [1 2 3];
 para.show2Dproblem          = false;
 para.show2Dproblem_id       = 4;
 
 % get object mesh
+% filename = 'planefrontstay.stl';
 filename = 'sandpart2.stl';
 [fgraph, pgraph, mesh] = getObject(para, filename);
 
@@ -141,6 +142,7 @@ set(handles.BTN_rand_final, 'Enable', 'on');
 
 
 function BTN_plan_Callback(hObject, eventdata, handles)
+clc;
 global para fgraph pgraph mesh grasps q0 qf % inputs
 global path_found path_q path_graspid path_qp path_gripper_plan_2d % outputs
 
@@ -168,13 +170,25 @@ if any(grasp_id_f&grasp_id_0)
 	adj_matrix(fgraph.NM+1, fgraph.NM+2) = 1;
 	adj_matrix(fgraph.NM+2, fgraph.NM+1) = 1;
 end
-mode_grasps = [fgraph.grasps; grasp_id_0; grasp_id_f];
+if ~any(grasp_id_0)
+	disp('[Planning] No Solution. No feasible grasp for initial pose.');
+	return;
+end
+if ~any(grasp_id_f)
+	disp('[Planning] No Solution. No feasible grasp for final pose.');
+	return;
+end
+adj_matrix(fgraph.NM+1, fgraph.NM+1) = 1;
+adj_matrix(fgraph.NM+2, fgraph.NM+2) = 1;
+disp('Adjacent Matrix:');
+disp(adj_matrix);
 
+mode_grasps = [fgraph.grasps; grasp_id_0; grasp_id_f];
 path_counter = 1;
 while true
 	[~, mode_id_path] = dijkstra(adj_matrix, ones(fgraph.NM+2), fgraph.NM+1, fgraph.NM+2);
 	NP                = length(mode_id_path);
-	if NP == 0
+	if isnan(mode_id_path)
 		disp('[Planning] No solution found given the available grasps.');
 		break;
 	end

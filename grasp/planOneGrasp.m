@@ -51,7 +51,7 @@ graspfpz_grasp0p_right = aaOnVec(graspfpz_grasp0p, -para.GRIPPER_TILT_LIMIT, [1 
 % position of points
 qp_grasp0p      = quatMTimes(quatInv(qgrasp0p_w), qp);
 COMp_grasp0p    = quatOnVec(mesh.COM, qp_grasp0p);
-pointsp_grasp0p = quatOnVec(mesh.points(:, pgraph.points_id), qp_grasp0p);
+pointsp_grasp0p = quatOnVec(pgraph.vertices, qp_grasp0p);
 gp1p_grasp0p    = quatOnVec(gp1o_w, qp_grasp0p);
 gp2p_grasp0p    = quatOnVec(gp2o_w, qp_grasp0p);
 
@@ -77,7 +77,7 @@ Rw_2d             = Rgrasp0p_2d*Rw_grasp0p;
 % 	Solve the 2D problem
 % -----------------------------------------
 [object_plan_2d, init_grasp_ang, flag] = plan2DObject(gravity_2d, graspfpz_2d, COMp_2d, gpp_2d, ...
-												Rw_2d, pointsp_2d, pgraph.adj_matrix, para);
+												Rw_2d, pointsp_2d, pgraph.err_bound, pgraph.adj_matrix, para);
 
 if flag <= 0
 	gripper_plan_2d = [];

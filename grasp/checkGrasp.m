@@ -13,9 +13,9 @@ grasp_id 		   = ones(1, grasps.count);
 % find the bottom point, vertical offset
 points_rot = zeros(3, pgraph.NPC);
 for j = 1:pgraph.NPC
-	points_rot(:,j) = quatOnVec(mesh.points(:,pgraph.points_id(j)), q);
+	points_rot(:,j) = quatOnVec(pgraph.vertices(:, j), q);
 end
-z_offset = min(points_rot(3,:));
+z_offset = min(points_rot(3,:)) + pgraph.err_bound;
 
 for j = 1:grasps.count
 	% rotate grasp

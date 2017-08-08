@@ -1,6 +1,5 @@
 % sample grasps; calculate contact mode graph
 function [grasps, fgraph] = calGrasp(fgraph, pgraph, mesh, para)
-disp('[CalGrasp] Sampling Grasp Positions.');
 % --------------------------------------------
 % 		Parameters
 % --------------------------------------------
