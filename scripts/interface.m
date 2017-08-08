@@ -92,8 +92,8 @@ para.GRIPPER_TILT_LIMIT = 40*pi/180; % tilting angle tolerance
 para.GRIPPER_Z_LIMIT    = 0.2; % finger position limit
 % friction between object and  ground
 para.MU = 0.5;
-% grasp pos sample density
-para.GS_DENSITY = 0.05; % 1 point every 0.1 m^2
+% number of grasp pos samplings
+para.NGS = 100; 
 % grasp axis tolerance
 para.ANGLE_TOL = 0.1; % rad
 para.COM_DIST_LIMIT = 0.8; % meter
@@ -115,8 +115,8 @@ para.show2Dproblem          = false;
 para.show2Dproblem_id       = 4;
 
 % get object mesh
-% filename = 'planefrontstay.stl';
-filename = 'sandpart2.stl';
+filename = 'planefrontstay.stl';
+% filename = 'sandpart2.stl';
 [fgraph, pgraph, mesh] = getObject(para, filename);
 
 % calculate grasps, and contact mode graph

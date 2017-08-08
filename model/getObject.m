@@ -25,6 +25,16 @@ disp(['[GetObject] Points on Model: ' num2str(NP) ]);
 % calculate center of mass
 COM = mean(points, 2); % an estimation
 
+% calculate the area of each triangle
+A = points(:, faces(1,:));
+B = points(:, faces(2,:));
+C = points(:, faces(3,:));
+a = normByCol(A-B);
+b = normByCol(B-C);
+c = normByCol(C-A);
+p = (a+b+c)/2;
+area = sqrt(p.*(p-a).*(p-b).*(p-c));
+
 % --------------------------------------------
 % 		Convex Hull
 % 		And Decimation
@@ -107,6 +117,7 @@ pgraph.adj_matrix = pch_adj_matrix;
 mesh.faces  = faces;
 mesh.points = points;
 mesh.COM    = COM;
+mesh.area   = area;
 
 disp('[GetObject] Model Processing Done.');
 

@@ -4,43 +4,43 @@ function [grasps, fgraph] = calGrasp(fgraph, pgraph, mesh, para)
 % 		Parameters
 % --------------------------------------------
 % MU                 = para.MU;
-GS_DENSITY         = para.GS_DENSITY;
+% GS_DENSITY         = para.GS_DENSITY;
 ANGLE_TOL          = para.ANGLE_TOL;
-
+NGS = para.NGS;
 % cone = atan(MU);
 
 % --------------------------------------------
 % 		sample grasp positions
 % --------------------------------------------
 disp('[CalGrasp] Sampling Grasp Positions.');
-N_F          = size(mesh.faces, 2); % number of faces
-grasp_points = zeros(3, N_F*50, 2);
+grasp_points = zeros(3, NGS, 2);
 grasp_count  = 0;
 
-for i = 1:N_F-1
+% 1. sample NGS points on the mesh surface
+samples    = mnrnd(NGS, mesh.area/norm(mesh.area));
+id_sampled = find(samples > 0);
+
+% 2. for each point, check the grasp
+for i = 1:length(id_sampled)
 	p1      = zeros(3);
 	p2      = zeros(3);
-	p1(:,1) = mesh.points(:, mesh.faces(1, i));
-	p1(:,2) = mesh.points(:, mesh.faces(2, i));
-	p1(:,3) = mesh.points(:, mesh.faces(3, i));
+	p1(:,1) = mesh.points(:, mesh.faces(1, id_sampled(i)));
+	p1(:,2) = mesh.points(:, mesh.faces(2, id_sampled(i)));
+	p1(:,3) = mesh.points(:, mesh.faces(3, id_sampled(i)));
 	n1      = cross(p1(:,1) - p1(:,2), p1(:,3) - p1(:,2));
-	area1   = norm(n1)/2;
-	if area1 < 1e-7
-		continue;
-	end
-	n1 = n1/area1/2;
+	n1      = n1/norm(n1);
 
-	% sample grasp points on face i
-	ns_i                = ceil(area1/GS_DENSITY);
+	% sample grasp points on face id_sampled(i)
+	ns_i                = samples(id_sampled(i));
 	grasp_points_face_i = sampleTriUniform(p1(:,1), p1(:,2),p1(:,3), ns_i);
 
-	for j = i+1:N_F
+	for j = 1:N_F
 		p2(:,1) = mesh.points(:, mesh.faces(1, j));
 		p2(:,2) = mesh.points(:, mesh.faces(2, j));
 		p2(:,3) = mesh.points(:, mesh.faces(3, j));
 		n2      = cross(p2(:,1) - p2(:,2), p2(:,3) - p2(:,2));
 		area2   = norm(n2)/2;
-		% check area 
+		% check area
 		if area2 < 1e-7
 			continue;
 		end
