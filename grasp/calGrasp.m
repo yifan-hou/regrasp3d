@@ -3,10 +3,10 @@ function [grasps, fgraph] = calGrasp(fgraph, pgraph, mesh, para)
 % --------------------------------------------
 % 		Parameters
 % --------------------------------------------
-% MU                 = para.MU;
-% GS_DENSITY         = para.GS_DENSITY;
-ANGLE_TOL          = para.ANGLE_TOL;
-NGS = para.NGS;
+% MU         = para.MU;
+% GS_DENSITY = para.GS_DENSITY;
+ANGLE_TOL = para.ANGLE_TOL;
+NGS       = para.NGS;
 % cone = atan(MU);
 
 % --------------------------------------------
@@ -61,11 +61,11 @@ for i = 1:length(id_sampled)
 			if ~in(k)
 				continue;
 			end
-			a = norm(mesh.COM - grasp_points_face_i(:,k));
-			b = norm(mesh.COM - grasp_points_face_j(:,k));
-			c = norm(grasp_points_face_i(:,k) - grasp_points_face_j(:,k));
-			p = (a+b+c)/2;
-			area = sqrt(p*(p-a)*(p-b)*(p-c));
+			a        = norm(mesh.COM - grasp_points_face_i(:,k));
+			b        = norm(mesh.COM - grasp_points_face_j(:,k));
+			c        = norm(grasp_points_face_i(:,k) - grasp_points_face_j(:,k));
+			p        = (a+b+c)/2;
+			area     = sqrt(p*(p-a)*(p-b)*(p-c));
 			dist2COM = area*2/c;
 			if dist2COM > para.COM_DIST_LIMIT
 				in(k) = 0;
@@ -86,7 +86,7 @@ disp(['[CalGrasp] Number of candidate grasps: ' num2str(grasp_count)]);
 % calculate quaternions for each grasp
 grasp_quats = zeros(4, grasp_count);
 for i = 1:grasp_count
-	v = grasp_points(:,i,1) - grasp_points(:,i,2);
+	v                = grasp_points(:,i,1) - grasp_points(:,i,2);
 	grasp_quats(:,i) = quatBTVec(v,[1 0 0]');
 end
 
@@ -108,14 +108,12 @@ end
 grasp_range = cell(1, grasp_count);
 for i = 1:grasp_count
 	% rotate all the points
-
 	for j = 1:360
 		deg = j*pi/180 - pi;
 		% collide = gripperCollisionCheck(p)
 	end
 	grasp_range{i} = [-pi, pi];
 end
-
 
 grasps.count  = grasp_count;
 grasps.points = grasp_points;

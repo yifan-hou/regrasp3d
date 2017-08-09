@@ -83,7 +83,7 @@ varargout{1} = handles.output;
 
 
 function BTN_load_model_Callback(hObject, eventdata, handles)
-global para fgraph pgraph mesh grasps q0 qf
+global para fgraph pgraph mesh grasps gripper q0 qf
 clc;
 % -----------------------------------------------
 % 		Offline-computation
@@ -118,6 +118,8 @@ para.show2Dproblem_id       = 4;
 filename = 'planefrontstay.stl';
 % filename = 'sandpart2.stl';
 [fgraph, pgraph, mesh] = getObject(para, filename);
+gripper = getGripper();
+
 
 % calculate grasps, and contact mode graph
 [grasps, fgraph] = calGrasp(fgraph, pgraph, mesh, para);
@@ -279,9 +281,9 @@ plotObject(mesh, handles.AX_final, qf);
 
 
 function BTN_animate_Callback(hObject, eventdata, handles)
-global para mesh grasps
+global para mesh grasps gripper
 global path_found path_q path_graspid path_qp path_gripper_plan_2d
 
 if path_found
-	animatePlan(mesh, grasps, handles.AX_animation, path_q, path_graspid, path_qp, path_gripper_plan_2d);
+	animatePlan(mesh, grasps, gripper, handles.AX_animation, path_q, path_graspid, path_qp, path_gripper_plan_2d);
 end

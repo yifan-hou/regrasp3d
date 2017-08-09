@@ -3,6 +3,14 @@ clfAll;clear;clc;
 addpath ../grasp
 addpath ../model
 
+gripper = getGripper();
+q = [1 0 0 0]';
+gp = [0.5 -0.5; 0 0; 0.5 0.5];
+gq = [1 0 0 0]';
+plotGripper(1, gripper, q, gp, gq)
+disp('Done');
+return;
+
 % -----------------------------------------------
 % 		Offline-computation
 % -----------------------------------------------
