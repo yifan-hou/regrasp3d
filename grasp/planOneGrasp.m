@@ -111,8 +111,6 @@ gripper_plan_2d = plan2DGripper(object_plan_2d, init_grasp_ang, para);
 m0p_w      = quat2m(q0p_w);
 gp10p_w    = m0p_w*gp10_w;
 gp20p_w    = m0p_w*gp20_w;
-% COM0p_w    = m0p_w*quatOnVec(mesh.COM, q0);
-% points0p_w = m0p_w*quatOnVec(mesh.points, q0);
 
 % Check 3: world frame check
 qgrasp_now = qgrasp0p_w;

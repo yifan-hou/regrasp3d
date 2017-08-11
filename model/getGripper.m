@@ -4,7 +4,7 @@
 % palm is to the top of the fingers.
 % vertices_list: fingertip_plus, fingertip_minus, palm
 function [gripper] = getGripper() 
-FINGERTIP_DIAMETER  = 0.1;
+FINGERTIP_DIAMETER  = 0.06;
 FIGNERTIP_EDGES     = 8;
 FIGNERTIP_THICKNESS = 0.1;
 FINGER_WIDTH        = 0.7*FINGERTIP_DIAMETER;

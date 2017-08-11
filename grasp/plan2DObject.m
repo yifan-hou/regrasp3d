@@ -241,13 +241,19 @@ end
 %  0: can do roll
 %  1: can do pivot
 function pivotable = checkPivotability(com, cp, gp, g, ps_err, para)
-	pivotable = 0;
+	% 0: only roll
+    pivotable = 0;
+    % 1: can pivot
 	if ((cp(1)-ps_err)*com(1) > 0) && ((cp(1)+ps_err)*com(1))
 		pivotable = 1;
 	end
+    % -1: gripper limit violated
 	if ((cp-gp(:,1))'*g < para.GRIPPER_Z_LIMIT)||((cp-gp(:,2))'*g < para.GRIPPER_Z_LIMIT)
 		pivotable = -1;
 	end
+    % -1: collision
+    
+
 end
 
 % z: rotation axis of object

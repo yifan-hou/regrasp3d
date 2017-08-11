@@ -1,7 +1,7 @@
 % object def
 % 	mlist: list of modes
 %	plist: list of vertices of mesh model
-function [fgraph, pgraph, mesh] = getObject(para, stlname) 
+function [fgraph, pgraph, mesh, mesh_s] = getObject(para, stlname) 
 
 disp('[GetObject] Reading STL model..');
 fv = stlread(stlname);
@@ -36,6 +36,19 @@ p = (a+b+c)/2;
 area = sqrt(p.*(p-a).*(p-b).*(p-c));
 
 % --------------------------------------------
+% 		Decimated Mesh
+% --------------------------------------------
+if size(fv.faces, 1) > 1000
+	mesh_s           = reducepatch(fv.faces, fv.vertices, 500);
+	mesh_s.err_bound = hausdorffDist(mesh_s.vertices', fv.vertices');
+else
+	mesh_s           = fv;
+	mesh_s.err_bound = 0;
+end
+disp(['[GetObject] Mesh Approximation Error: ' num2str(mesh_s.err_bound) ]);
+% assert(mesh_s.err_bound < 1e-2, 'Approximation Error is too large.');
+
+% --------------------------------------------
 % 		Convex Hull
 % 		And Decimation
 % --------------------------------------------
@@ -45,7 +58,7 @@ err_bound = hausdorffDist(fv.vertices(fvc_id, :)', fvr.vertices');
 NFC       = size(fvr.faces, 1);
 NPC       = size(fvr.vertices, 1);
 assert(NPC == max(max(fvr.faces)));
-disp(['[GetObject] Mesh Approximation Error: ' num2str(err_bound) ]);
+disp(['[GetObject] Convex Hull Approximation Error: ' num2str(err_bound) ]);
 
 % face_conv = convhull(fv.vertices, 'simplify',true);
 % NFC       = size(face_conv, 1); 
@@ -114,10 +127,10 @@ pgraph.vertices   = fvr.vertices';
 pgraph.adj_matrix = pch_adj_matrix; 
 
 % full mesh
-mesh.faces  = faces;
-mesh.points = points;
-mesh.COM    = COM;
-mesh.area   = area;
+mesh.faces    = faces'; % Nx3, common mesh convention in matlab
+mesh.vertices = points'; 
+mesh.COM      = COM;
+mesh.area     = area;
 
 disp('[GetObject] Model Processing Done.');
 

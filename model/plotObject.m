@@ -7,9 +7,8 @@ if nargin <= 1
 	fidOrhandle = 1;
 end
 
-for i = 1:size(mesh.points,2)
-	mesh.points(:,i) = quatOnVec(mesh.points(:,i), q);
-end
+m = quat2m(q);
+vertices = m*(mesh.vertices');
 
 if isnumeric(fidOrhandle)
 	figure(fidOrhandle);
@@ -20,10 +19,8 @@ else
 end
 
 hold on;
-plot3(mesh.points(1,:), mesh.points(2,:), mesh.points(3,:), '.');
-% trisurf(mesh.faces',mesh.points(1,:), mesh.points(2,:), mesh.points(3,:), 'Facecolor', 'b','FaceAlpha', 0.3);
-patch('Faces', mesh.faces', ...
-	  'Vertices', mesh.points', ...
+patch('Faces', mesh.faces, ...
+	  'Vertices', vertices', ...
 	  'FaceColor',       [0.8 0.8 1.0], ...
       'EdgeColor',       'none',        ...
       'FaceLighting',    'gouraud',     ...

@@ -11,7 +11,7 @@ STEP_LENGTH_RAD = 3*pi/180;
 q0        = path_q(:,1);
 m0_o      = quat2m(q0);
 com_w     = m0_o*mesh.COM;
-points_w  = m0_o*mesh.points;
+points_w  = m0_o*(mesh.vertices');
 
 % gripper states
 gp1o_w          = grasps.points(:,path_graspid(1), 1);
@@ -49,7 +49,7 @@ h_vertices = plot3(points_w(1,:), points_w(2,:), points_w(3,:), '.');
 h_cp	   = plot3(cp_w(1,:), cp_w(2,:), cp_w(3,:), '.k', 'markersize', 30);
 h_com	   = plot3(com_w(1), com_w(2), com_w(3), 'r*', 'markersize', 8);
 h_gravity  = plot3(com_w(1)+[0 0], com_w(2)+[0 0], com_w(3)+[0 -0.4], 'r-', 'linewidth', 2);
-h_surf     = patch('Faces',           mesh.faces',   ...
+h_surf     = patch('Faces',           mesh.faces,   ...
 				   'Vertices',        points_w',  ...
 				   'FaceColor',       [0.8 0.8 1.0], ...
 			       'EdgeColor',       'none',        ...
@@ -74,7 +74,7 @@ for p = 1:NP-1
 	qp       = path_qp(:,p);
 	m0_o     = quat2m(q0);
 	com_w    = m0_o*mesh.COM;
-	points_w = m0_o*mesh.points;
+	points_w = m0_o*(mesh.vertices');
 
 	% grasp
 	gp1o_w    = grasps.points(:,path_graspid(1), 1);

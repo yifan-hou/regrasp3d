@@ -83,7 +83,7 @@ varargout{1} = handles.output;
 
 
 function BTN_load_model_Callback(hObject, eventdata, handles)
-global para fgraph pgraph mesh grasps gripper q0 qf
+global para fgraph pgraph mesh mesh_s grasps gripper q0 qf
 clc;
 % -----------------------------------------------
 % 		Offline-computation
@@ -93,7 +93,7 @@ para.GRIPPER_Z_LIMIT    = 0.2; % finger position limit
 % friction between object and  ground
 para.MU = 0.5;
 % number of grasp pos samplings
-para.NGS = 100; 
+para.NGS = 200; 
 % grasp axis tolerance
 para.ANGLE_TOL = 0.1; % rad
 para.COM_DIST_LIMIT = 0.8; % meter
@@ -103,9 +103,9 @@ para.GOALSAMPLEDENSITY2D = 15*pi/180; % 1 sample every 5 degree
 para.PIVOTABLE_CHECK_GRANULARITY = 1*pi/180; % 1 sample every 1 degree
 
 % Popups 
-para.showObject             = true; % show object and the simplified object
+para.showObject             = false; % show object and the simplified object
 para.showObject_id          = [1 2 3];
-para.showAllGraspSamples    = true;
+para.showAllGraspSamples    = false;
 para.showAllGraspSamples_id = 1;
 para.showCheckedGrasp       = false;
 para.showCheckedGrasp_id    = 3;
@@ -115,14 +115,17 @@ para.show2Dproblem          = false;
 para.show2Dproblem_id       = 4;
 
 % get object mesh
-filename = 'planefrontstay.stl';
+% filename = 'planefrontstay.stl';
 % filename = 'sandpart2.stl';
-[fgraph, pgraph, mesh] = getObject(para, filename);
+% [fgraph, pgraph, mesh, mesh_s] = getObject(para, filename);
 gripper = getGripper();
 
 
-% calculate grasps, and contact mode graph
-[grasps, fgraph] = calGrasp(fgraph, pgraph, mesh, para);
+% % calculate grasps, and contact mode graph
+% [grasps, fgraph] = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para);
+
+% save ../model/data/planefrontstay_data.mat fgraph pgraph mesh mesh_s grasps fgraph;
+load planefrontstay_data
 
 % Plot the object
 plotObject(mesh, handles.AX_initial);
@@ -145,7 +148,7 @@ set(handles.BTN_rand_final, 'Enable', 'on');
 
 function BTN_plan_Callback(hObject, eventdata, handles)
 clc;
-global para fgraph pgraph mesh grasps q0 qf % inputs
+global para fgraph pgraph mesh gripper grasps q0 qf % inputs
 global path_found path_q path_graspid path_qp path_gripper_plan_2d % outputs
 
 disp('[Planning] Planning begin.');
