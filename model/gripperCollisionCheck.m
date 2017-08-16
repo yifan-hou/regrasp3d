@@ -1,12 +1,12 @@
 % Start from fingertips
-% If fingertips collide, feasible_range = []
+% If fingertips collide with object, feasible_range = []
 % Otherwise, check the finger&palm with different angles and store in feasible_range
 % Angles are measured w.r.t. the "GetProperGrasp' angle at original grasp position
 % output
-% 	feasible_range: 360x1
-
-function [feasible_range] = gripperCollisionCheck(mesh, mesh_s, gripper, gp)
-DELTA = 1e-3;
+% 	feasible_range: 360x1.   1: collision free. 0: has collision
+% 	qgrasp:	4x1, a quaternion frame. x axis: gp(:,1) - gp(:,2), z axis: theta = 0
+function [feasible_range, qgrasp] = gripperCollisionCheck(mesh, mesh_s, gripper, gp, para)
+DELTA          = 1e-3;
 feasible_range = [];
 
 % ----------------------------------------------
@@ -64,7 +64,7 @@ theta = [0:359] * pi/180;
 q     = aa2quat(theta, ax);
 gq    = quatMTimes(q, qgrasp);
 
-feasible_range     = false(360, 1);
+feasible_range     = false(1, 360);
 finger_plus.faces  = gripper.faces{3};
 finger_minus.faces = gripper.faces{4};
 palm.faces         = gripper.faces{5};
@@ -97,9 +97,22 @@ for i = 1:360
 end % end for
 
 % reject small range grasp points
-if sum(feasible_range) < 10
+start1      = strfind([0, feasible_range==1],[0 1]);
+end1        = strfind([feasible_range==1,0],[1 0]);
+length_of_1 = end1 - start1 + 1;
+
+if ~any(length_of_1 >= 2*para.COLLISION_FREE_ANGLE_MARGIN)
 	feasible_range = [];
-end
+else
+	for i = 1:length(length_of_1)
+		if length_of_1(i) < (2*para.COLLISION_FREE_ANGLE_MARGIN+1)
+			% useless feasible range
+			feasible_range(start1(i):end1(i)) = 0;
+		end
+	end
+end	
+
+
 
 end % end function
 

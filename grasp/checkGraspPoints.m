@@ -1,5 +1,6 @@
 % select the set of good grasps for a given pose
-function [grasp_id] = checkGrasp(grasps, mesh, pgraph, q, para)
+% check z limit, orientation limit
+function [grasp_id] = checkGraspPoints(grasps, mesh, pgraph, q, para)
 
 % --------------------------------------------
 % 		Parameters
@@ -35,14 +36,11 @@ for j = 1:grasps.count
 		continue;
 	end
 
-	%todo: check collision with hand
-
-
-	% visualization
-	if para.showCheckedGrasp
-		figure(para.showCheckedGrasp_id); hold on;
-		plot3([p1(1) p2(1)], [p1(2) p2(2)], [p1(3) p2(3)], '*','markersize',8);
-	end
+	% % visualization
+	% if para.showCheckedGrasp
+	% 	figure(para.showCheckedGrasp_id); hold on;
+	% 	plot3([p1(1) p2(1)], [p1(2) p2(2)], [p1(3) p2(3)], '*','markersize',8);
+	% end
 end
 
 

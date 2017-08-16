@@ -1,6 +1,6 @@
 % gp: grasp points in world frame
 % q: 4x1
-function animatePlan(mesh, grasps, gripper, fidOrhandle, path_q, path_graspid, path_qp, path_gripper_plan_2d)
+function animatePlan(mesh, grasps, gripper, fidOrhandle, path_q, path_graspid, path_qp, plan_2d)
 
 STEP_LENGTH_RAD = 3*pi/180;
 % STEP_LENGTH_METER = 0.1;
@@ -121,13 +121,13 @@ for p = 1:NP-1
 	ang_obj = 0;
 	ang_grp = 0;
 	n       = gp10_w - gp20_w; n = n/norm(n); % rotation axis
-	if path_gripper_plan_2d{p}.dir > 0
+	if plan_2d{p}.dir > 0
 		n = -n;
 	end
 
-	for s = 1:length(path_gripper_plan_2d{p}.gripper_motion)
-		ang_obj_incre = path_gripper_plan_2d{p}.object_motion(s);
-		ang_grp_incre = path_gripper_plan_2d{p}.gripper_motion(s);
+	for s = 1:length(plan_2d{p}.grp_motion_diff)
+		ang_obj_incre = plan_2d{p}.obj_motion_diff(s);
+		ang_grp_incre = plan_2d{p}.grp_motion_diff(s);
 		assert(~any(ang_obj_incre < 0)); 
 
 		num = floor(max(ang_obj_incre, ang_grp_incre)/STEP_LENGTH_RAD);
@@ -138,7 +138,7 @@ for p = 1:NP-1
 		ang_obj_incre_array = fixStepSample(0, ang_obj_incre, num);
 		ang_grp_incre_array = fixStepSample(0, ang_grp_incre, num);
 
-		if(path_gripper_plan_2d{p}.rtype(s) == 0)
+		if(plan_2d{p}.rtype(s) == 0)
 			h_fingertip_plus.FaceColor  = [0.9 0.1 0];
 			h_fingertip_minus.FaceColor = [0.9 0.1 0];
 		else

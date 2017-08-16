@@ -14,7 +14,6 @@ para.ANGLE_TOL = 0.1; % rad
 para.COM_DIST_LIMIT = 0.8; % meter
 % shape of gripper(for collision checking)
 % para.gripper_shape = getGripper();
-para.GOALSAMPLEDENSITY2D = 15*pi/180; % 1 sample every 5 degree
 para.PIVOTABLE_CHECK_GRANULARITY = 1*pi/180; % 1 sample every 1 degree
 
 % Popups 

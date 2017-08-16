@@ -12,54 +12,57 @@
 %       -1: required rolling exceeds gripper tilt limit
 %       -3: initial grasp pos violates gripper tilt limit 
 %       -4: initial grasp pos violates gripper Z limit 
-function	[plan, init_roll_ang, flag] = plan2DObject(g, goal, com, gp, Rw_2d, ps, ps_err, cmat, para)
+function	[plan, init_gripper_ang, flag] = plan2DObject(g, goal, com, gp, Rw_2d, ps, ps_err, cmat, cf_range, cf_init_id, gripper_cone_width, para)
 % rotate so that gy points down
-R      = matBTVec([g(1:2); 0], [0 -1 0]');
-g      = R*g; % should be [0 -1 ?]
-ps     = R*ps;
-gp     = R*gp;
-com    = R*com;
-goal   = R*goal;  % goal(3) should = 0
-init   = R*[0; 1; 0];
+R    = matBTVec([g(1:2); 0], [0 -1 0]');
+g    = R*g; % should be [0 -1 ?]
+ps   = R*ps;
+gp   = R*gp;
+com  = R*com;
+goal = R*goal;  % goal(3) should = 0
+init = R*[0; 1; 0];
 
-gripper_cone_right = [sin(para.GRIPPER_TILT_LIMIT),  cos(para.GRIPPER_TILT_LIMIT), 0]';
-gripper_cone_left  = [-sin(para.GRIPPER_TILT_LIMIT), cos(para.GRIPPER_TILT_LIMIT), 0]';
+% check initial grasp orientation
+if norm(g(1:2)) < 1e-2
+    plan             = [];
+    init_gripper_ang = [];
+    flag             = -3;
+	return;
+end
+% check initial grasp orientation
+if init(2) < cos(gripper_cone_width)
+    plan             = [];
+    init_gripper_ang = [];
+    flag             = -3;
+	return;
+end
+
+
+init_gripper_ang = angBTVec([g(1:2); 0], [0 -1 0]', [0 0 1]');
+cf_zero_id       = cf_init_id - round(180/pi*init_gripper_ang);
+
+gripper_cone_right = [sin(gripper_cone_width),  cos(gripper_cone_width), 0]';
+gripper_cone_left  = [-sin(gripper_cone_width), cos(gripper_cone_width), 0]';
 
 % find contact point
 [~, cp_id] = max(g'*ps); % id of contact point in points list
 cp         = ps(:,cp_id);
 
-% check initial grasp pos
-if init(2) < cos(para.GRIPPER_TILT_LIMIT)
-	plan = [];
-    init_roll_ang = [];
-    flag = -3;
-	return;
-end
+
+% check initial grasp height
 if ((cp-gp(:,1))'*g < para.GRIPPER_Z_LIMIT) || ((cp-gp(:,2))'*g < para.GRIPPER_Z_LIMIT)
-	plan = [];
-    init_roll_ang = [];
-    flag = -4;
+    plan             = [];
+    init_gripper_ang = [];
+    flag             = -4;
 	return;
 end
+
 
 % Plan
 %	dir: direction of object rotation in grasp frame
 %	motion: 1xN angle of object to traverse
 %   rtype: 1xN, 1: pivotable 0: not pivotable -1: infeasible
 
-
-% % check if goal is already reachable
-% % todo: consider the situation when the initial pose is stable
-% if checkPivotability(com, cp, gp, g, para)
-% 	if angBTVec([0 1 0]', goal) < para.GRIPPER_TILT_LIMIT
-% 		motion = 0;
-% 		rtype = 1;
-% 		plan.motion = motion;
-% 		plan.rtype = rtype;
-% 		return;
-% 	end
-% end
 
 % sample a few angles where goal is overlapping with cone.
 z = [0 0 1]'; % when dir = positive, -z is the rotation axis of object
@@ -74,7 +77,7 @@ else
 end
 
 object_motion_feasible = false;
-feasible_dir   = 0;
+feasible_dir           = 0;
 
 for d = 1:2
     if object_motion_feasible
@@ -99,11 +102,12 @@ for d = 1:2
     
     
     % calculate goal angle
-    ang2goal = angBTVec([0 1 0]',  goal, z, 1);
-    if s_dir(1) < 0
-        ang2goal = 2*pi - ang2goal;
+    if s_dir(1) > 0
+        ang2goal = angBTVec(gripper_cone_right,  goal, z, 1);
+    else % s_dir(1) < 0
+        ang2goal = angBTVec(gripper_cone_left,  goal, -z, 1);
     end
-%     disp(['Angle to goal:' num2str(ang2goal*180/pi)]);
+    % disp(['Angle to goal:' num2str(ang2goal*180/pi)]);
 
     % calculate possible initial rolling angle
     if s_dir(1) < 0
@@ -113,14 +117,14 @@ for d = 1:2
     end
     
     % initialization
-    s_cp    = cp; % current id
-    s_cpid  = cp_id;
-    s_ps    = ps;
-    s_com   = com;
-    s_goal  = goal;
-    s_angle = 0;
-    motion  = [];
-    rtype   = [];
+    s_cp     = cp; % current id
+    s_cpid   = cp_id;
+    s_ps     = ps;
+    s_com    = com;
+    s_goal   = goal;
+    s_angle  = 0;
+    motion   = [];
+    rtype    = [];
     % begin rolling
     while true
         % get next contact
@@ -137,7 +141,7 @@ for d = 1:2
                 tempid       = cmat(s_cpid,:); tempid(cpid2) = 0;
                 tempid2      = cmat(cpid2,:); tempid2(s_cpid) = 0;
                 adj_p_id     = [find(tempid) find(tempid2)];
-                contact_vecs = [s_ps(:, find(tempid)) - s_ps(:, s_cpid), s_ps(:, find(tempid2)) - s_ps(:, cpid2)];
+                contact_vecs = [s_ps(:, tempid) - s_ps(:, s_cpid), s_ps(:, tempid2) - s_ps(:, cpid2)];
             end
         end
         
@@ -209,7 +213,9 @@ for d = 1:2
         
         if flag_finish_now
             % further check the whole trajectory, determine feasibility
-            if checkTraj(motion, rtype, init_roll_ang, para)
+            [feasible, motion, rtype, cf_range_at_roll]  = checkTraj(motion, rtype, init_roll_ang, s_dir(1), ...
+                                                             cf_range, cf_zero_id, gripper_cone_width);
+            if feasible
                 % good! record
                 feasible_dir   = s_dir(1);
                 object_motion_feasible = true;
@@ -226,13 +232,24 @@ for d = 1:2
 end % end both directions
 
 if ~object_motion_feasible
-	plan = [];
-    init_roll_ang = [];
+    plan          = [];
+    init_gripper_ang = [];
 	return;
 else
-	plan.motion = motion;
-	plan.rtype  = rtype;
-	plan.dir    = feasible_dir;
+    plan.motion           = motion;
+    plan.rtype            = rtype;
+    plan.dir              = feasible_dir;
+    plan.cf_range_at_roll = cf_range_at_roll;
+
+    % check
+    init_goal_ang = angBTVec([0 1 0]', goal, [0 0 1]');
+    if feasible_dir > 0
+        final_goal_ang = init_goal_ang - sum(motion);
+    else
+        final_goal_ang = init_goal_ang + sum(motion)
+    end
+    disp(['final_goal_ang: ' num2str(180/pi*final_goal_ang)]);
+
 end
 
 end
@@ -244,15 +261,13 @@ function pivotable = checkPivotability(com, cp, gp, g, ps_err, para)
 	% 0: only roll
     pivotable = 0;
     % 1: can pivot
-	if ((cp(1)-ps_err)*com(1) > 0) && ((cp(1)+ps_err)*com(1))
+	if ((cp(1)-ps_err)*com(1) > 0) && ((cp(1)+ps_err)*com(1) > 0)
 		pivotable = 1;
 	end
     % -1: gripper limit violated
 	if ((cp-gp(:,1))'*g < para.GRIPPER_Z_LIMIT)||((cp-gp(:,2))'*g < para.GRIPPER_Z_LIMIT)
 		pivotable = -1;
 	end
-    % -1: collision
-    
 
 end
 
@@ -282,10 +297,10 @@ function [motion, rtype] = calRotation(com, cp, ang, z, gp, g, ps_err, para)
         rtype = pivotable(1);
     else
         motion(1) = change(1)*para.PIVOTABLE_CHECK_GRANULARITY;
-        rtype(1) = pivotable(change(1));
+        rtype(1)  = pivotable(change(1));
         for i = 2:length(change)
             motion(i) = (change(i) - change(i-1))*para.PIVOTABLE_CHECK_GRANULARITY;
-            rtype(i) = pivotable(change(i));
+            rtype(i)  = pivotable(change(i));
         end        
         motion(end) = ang - change(end)*para.PIVOTABLE_CHECK_GRANULARITY;
         rtype(end) = pivotable(end);
@@ -293,42 +308,91 @@ function [motion, rtype] = calRotation(com, cp, ang, z, gp, g, ps_err, para)
 end
 
 
-function samples = sampleFixStep(a, b, step)
-	n = floor((b - a)/step);
-	samples = a + (0:n)*step;
+% function samples = sampleFixStep(a, b, step)
+% 	n = floor((b - a)/step);
+% 	samples = a + (0:n)*step;
+% end
+
+% combine adjacent motions with same type
+% check roll angles, check collision.
+% Input
+%   motion: object motion at each stage. Nonnegative
+% Output
+%   feasible: bool
+%   motion_: nx1 concatenated motion stages
+%   type_: nx1 types of each stages, no consecutive value. 010101
+%   range_: 360xk, collision-free range at the beginning of each roll stage
+function [feasible, motion_, type_, range_] = checkTraj(motion, rtype, init_roll_ang, dir, cf_range, cf_zero_id, gripper_cone_width)
+N            = length(motion);
+first_roll   = true;
+feasible     = true;
+motion_      = zeros(N, 1);
+type_        = zeros(N, 1);
+stage_count_ = 0;
+
+roll_count_ = 0;
+Nrange      = round(gripper_cone_width*2*180/pi) + 1;
+range_      = zeros(Nrange, N);
+
+i = 1;
+while true
+    accu_angle          = 0;
+    type_(stage_count_+1) = rtype(i);
+    while true
+        accu_angle = accu_angle + motion(i);
+        i = i + 1;
+        if (i > N) || (rtype(i) ~= type_(stage_count_+1))
+            break;
+        end
+    end
+
+    if type_(stage_count_+1) == 0 % roll
+        roll_count_ = roll_count_ + 1;
+        % -----------------------------------
+        %   check roll angle limit
+        % -----------------------------------
+        if (first_roll && (accu_angle > init_roll_ang)) || (accu_angle > 2*gripper_cone_width)
+            feasible = false;
+            break;
+        end
+        accu_angle_id = round(accu_angle*180/pi);
+        % -----------------------------------
+        %   check collision
+        % -----------------------------------
+        zone_start             = cf_zero_id + round(180/pi*(dir*sum(motion_) - gripper_cone_width));
+        zone_end               = zone_start + Nrange - 1;
+        zone                   = zone_start:zone_end;
+        range_(:, roll_count_) = circQuery(cf_range, zone);
+        if dir
+            range_(1:accu_angle_id, roll_count_) = false; 
+        else
+            range_(end-accu_angle_id:end, roll_count_) = false; 
+        end
+
+        if ~any(range_(:, roll_count_))
+            feasible = false;
+            break;
+        end
+    end
+
+    first_roll            = false;
+    motion_(stage_count_+1) = accu_angle;
+    stage_count_          = stage_count_ + 1;
+
+    if i > N
+        break;
+    end
 end
 
-
-function feasible = checkTraj(motion, rtype, init_roll_ang, para)
-if rtype(end) ~= 1
-    feasible = false;
+if ~feasible
+    motion_ = [];
+    type_   = [];
+    range_  = [];
     return;
 end
-N = length(motion);
-first_roll = true;
-for i = 1:N
-	roll_angle = 0;
-	if rtype(i) == 0
-		while true
-			roll_angle = roll_angle + motion(i);
-			i = i + 1;
-			if (i > N) || (rtype(i) ~= 0)
-				break;
-			end
-		end
-		if first_roll
-			first_roll = false;
-			if roll_angle > init_roll_ang
-				feasible = false;
-				return;
-			end
-		elseif roll_angle > 2*para.GRIPPER_TILT_LIMIT
-			feasible = false;
-			return;
-		end
-	end
 
-end
-feasible = true;
+motion_ = motion_(1:stage_count_);
+type_   = type_(1:stage_count_);
+range_  = range_(:, 1:roll_count_);
 
 end

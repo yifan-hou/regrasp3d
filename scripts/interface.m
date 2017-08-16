@@ -88,46 +88,60 @@ clc;
 % -----------------------------------------------
 % 		Offline-computation
 % -----------------------------------------------
+% Constraints
 para.GRIPPER_TILT_LIMIT = 40*pi/180; % tilting angle tolerance
 para.GRIPPER_Z_LIMIT    = 0.2; % finger position limit
+
+
 % friction between object and  ground
 para.MU = 0.5;
-% number of grasp pos samplings
-para.NGS = 200; 
-% grasp axis tolerance
-para.ANGLE_TOL = 0.1; % rad
+
+% Grasp sampling
+para.NGS            = 200; % number of grasp pos samplings
+para.ANGLE_TOL      = 0.1; % rad  % grasp axis tolerance
 para.COM_DIST_LIMIT = 0.8; % meter
-% shape of gripper(for collision checking)
-% para.gripper_shape = getGripper();
-para.GOALSAMPLEDENSITY2D = 15*pi/180; % 1 sample every 5 degree
+
+% planning parameter
 para.PIVOTABLE_CHECK_GRANULARITY = 1*pi/180; % 1 sample every 1 degree
+para.COLLISION_FREE_ANGLE_MARGIN = 5; % stay away from collsion for at least 5 degrees
+									  % has to be an positive integer
 
 % Popups 
-para.showObject             = false; % show object and the simplified object
+para.showObject             = true; % show object and the simplified object
 para.showObject_id          = [1 2 3];
-para.showAllGraspSamples    = false;
-para.showAllGraspSamples_id = 1;
-para.showCheckedGrasp       = false;
-para.showCheckedGrasp_id    = 3;
+para.showStablePoses        = false;
+para.showStablePoses_id     = 1;
+para.showCheckedGrasp       = true;
+para.showCheckedGrasp_id    = 1;
 para.showProblem            = false;
 para.showProblem_id         = [1 2 3];
 para.show2Dproblem          = false;
 para.show2Dproblem_id       = 4;
 
 % get object mesh
-% filename = 'planefrontstay.stl';
+filename = 'planefrontstay.stl';
 % filename = 'sandpart2.stl';
+
 % [fgraph, pgraph, mesh, mesh_s] = getObject(para, filename);
-gripper = getGripper();
-
-
-% % calculate grasps, and contact mode graph
-% [grasps, fgraph] = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para);
-
+gripper                        = getGripper();
+% [grasps, fgraph]               = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para);
 % save ../model/data/planefrontstay_data.mat fgraph pgraph mesh mesh_s grasps fgraph;
+
 load planefrontstay_data
 
-% Plot the object
+% visualize all the checked grasps
+if para.showCheckedGrasp
+	disp('Visualizing all checked grasps:');
+	plotObject(mesh, para.showCheckedGrasp_id); hold on;
+	for i = 1:grasps.count
+	    gp = reshape(grasps.points(:,i,:), [3,2]);
+		plot3(gp(1,:), gp(2,:), gp(3,:), '. -','linewidth',2, 'markersize', 20);
+		% drawnow;
+	end
+end
+
+
+% Plot the object to GUI
 plotObject(mesh, handles.AX_initial);
 plotObject(mesh, handles.AX_final);
 rotate3d on;
@@ -149,12 +163,12 @@ set(handles.BTN_rand_final, 'Enable', 'on');
 function BTN_plan_Callback(hObject, eventdata, handles)
 clc;
 global para fgraph pgraph mesh gripper grasps q0 qf % inputs
-global path_found path_q path_graspid path_qp path_gripper_plan_2d % outputs
+global path_found path_q path_graspid path_qp plan_2d % outputs
 
 disp('[Planning] Planning begin.');
-% get grasps for initial and final pose
-grasp_id_0 = checkGrasp(grasps, mesh, pgraph, q0, para);
-grasp_id_f = checkGrasp(grasps, mesh, pgraph, qf, para);
+% get grasp points for initial and final pose
+grasp_id_0 = checkGraspPoints(grasps, mesh, pgraph, q0, para);
+grasp_id_f = checkGraspPoints(grasps, mesh, pgraph, qf, para);
 
 % treat initial/final pose as additional mode
 % build the full graph
@@ -200,11 +214,11 @@ while true
 	disp(['[Planning] Trying Path #' num2str(path_counter) ', Path length = ' num2str(NP) ]);
 	disp('[Planning] Planning for each edge on the path: ');
 
-	path_q               = zeros(4, NP);
-	path_graspid         = zeros(1, NP-1);
-	path_qp              = zeros(4, NP-1);
-	path_gripper_plan_2d = cell(1,  NP-1);
-	path_found           = false;
+	path_q       = zeros(4, NP);
+	path_graspid = zeros(1, NP-1);
+	path_qp      = zeros(4, NP-1);
+	plan_2d      = cell(1,  NP-1);
+	path_found   = false;
 
 	% motion planning for each edge on the path
 	path_q(:,1) = q0;
@@ -220,10 +234,8 @@ while true
 		disp(['  Edge #' num2str(p) ', common grasps: ' num2str(length(id_common))]);
 		for i = 1:length(id_common)
 			path_graspid(p) = id_common(i);
-			gp1o_w          = grasps.points(:,id_common(i), 1);
-			gp2o_w          = grasps.points(:,id_common(i), 2);
 
-			[griper_plan_temp, qp_temp, flag] = planOneGrasp(mesh, gp1o_w, gp2o_w, path_q(:,p), path_q(:,p+1), pgraph, para);
+			[plan_2d_temp, qp_temp, flag] = planOneGrasp(mesh, grasps, id_common(i), path_q(:,p), path_q(:,p+1), pgraph, para);
 
 		    if flag <= 0
                 switch flag
@@ -238,7 +250,7 @@ while true
                 end
 		        continue;
 		    else
-				path_gripper_plan_2d{p} = griper_plan_temp;
+				plan_2d{p} = plan_2d_temp;
 				path_qp(:,p)            = qp_temp;
 		        disp(['  --- Grasp ' num2str(i) ' works.']);
 		        break;
@@ -246,7 +258,7 @@ while true
 			% gripper motion closed loop control
 		end
 
-		if isempty(path_gripper_plan_2d{p})
+		if isempty(plan_2d{p})
 			disp(['  Edge #' num2str(p) ' No solution.']);
 			adj_matrix(mode_id_path(p), mode_id_path(p+1)) = 0;
 			adj_matrix(mode_id_path(p+1), mode_id_path(p)) = 0;
@@ -285,8 +297,8 @@ plotObject(mesh, handles.AX_final, qf);
 
 function BTN_animate_Callback(hObject, eventdata, handles)
 global para mesh grasps gripper
-global path_found path_q path_graspid path_qp path_gripper_plan_2d
+global path_found path_q path_graspid path_qp plan_2d
 
 if path_found
-	animatePlan(mesh, grasps, gripper, handles.AX_animation, path_q, path_graspid, path_qp, path_gripper_plan_2d);
+	animatePlan(mesh, grasps, gripper, handles.AX_animation, path_q, path_graspid, path_qp, plan_2d);
 end
