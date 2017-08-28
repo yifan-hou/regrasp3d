@@ -14,11 +14,11 @@ com_w     = m0_o*mesh.COM;
 points_w  = m0_o*(mesh.vertices');
 
 % gripper states
-gp1o_w          = grasps.points(:,path_graspid(1), 1);
-gp2o_w          = grasps.points(:,path_graspid(1), 2);
-gp10_w          = quatOnVec(gp1o_w, q0);
-gp20_w          = quatOnVec(gp2o_w, q0);
-qgrasp0_w       = getProperGrasp(gp10_w, gp20_w); % grasp frame for q0, under world coordinate
+gp1o_w    = grasps.points(:,path_graspid(1), 1);
+gp2o_w    = grasps.points(:,path_graspid(1), 2);
+gp10_w    = quatOnVec(gp1o_w, q0);
+gp20_w    = quatOnVec(gp2o_w, q0);
+qgrasp0_w = getProperGrasp(gp10_w, gp20_w); % grasp frame for q0, under world coordinate
 
 if isnumeric(fidOrhandle)
 	figure(fidOrhandle);
@@ -45,7 +45,7 @@ cp_w      = points_w(:,cpid);
 % new plot
 hold on;
 % object
-h_vertices = plot3(points_w(1,:), points_w(2,:), points_w(3,:), '.');
+% h_vertices = plot3(points_w(1,:), points_w(2,:), points_w(3,:), '.');
 h_cp	   = plot3(cp_w(1,:), cp_w(2,:), cp_w(3,:), '.k', 'markersize', 30);
 h_com	   = plot3(com_w(1), com_w(2), com_w(3), 'r*', 'markersize', 8);
 h_gravity  = plot3(com_w(1)+[0 0], com_w(2)+[0 0], com_w(3)+[0 -0.4], 'r-', 'linewidth', 2);
@@ -77,8 +77,8 @@ for p = 1:NP-1
 	points_w = m0_o*(mesh.vertices');
 
 	% grasp
-	gp1o_w    = grasps.points(:,path_graspid(1), 1);
-	gp2o_w    = grasps.points(:,path_graspid(1), 2);
+	gp1o_w    = grasps.points(:,path_graspid(p), 1);
+	gp2o_w    = grasps.points(:,path_graspid(p), 2);
 	gp10_w    = quatOnVec(gp1o_w, q0);
 	gp20_w    = quatOnVec(gp2o_w, q0);
 	qgrasp0_w = getProperGrasp(gp10_w, gp20_w); % grasp frame for q0, under world coordinate
@@ -88,7 +88,7 @@ for p = 1:NP-1
 	% Update position of gripper
 	
 	updatePlot(gripper, eye(3), eye(3), gp10_w, gp20_w, qgrasp0_w, com_w, points_w,...
-			   h_vertices, h_cp, h_com, h_gravity, h_surf, h_fingertip_plus, h_fingertip_minus, ...
+			   h_cp, h_com, h_gravity, h_surf, h_fingertip_plus, h_fingertip_minus, ...
 			   h_finger_plus, h_finger_minus, h_palm);
 
 	% --------------------------------------
@@ -106,7 +106,7 @@ for p = 1:NP-1
 		Robj  = quat2m(q0i_w);
 		Rgrp  = Robj;
 		updatePlot(gripper, Robj, Rgrp, gp10_w, gp20_w, qgrasp0_w, com_w, points_w,...
-				   h_vertices, h_cp, h_com, h_gravity, h_surf, h_fingertip_plus, h_fingertip_minus, ...
+				   h_cp, h_com, h_gravity, h_surf, h_fingertip_plus, h_fingertip_minus, ...
 			       h_finger_plus, h_finger_minus, h_palm);
 	end
 
@@ -121,9 +121,6 @@ for p = 1:NP-1
 	ang_obj = 0;
 	ang_grp = 0;
 	n       = gp10_w - gp20_w; n = n/norm(n); % rotation axis
-	if plan_2d{p}.dir > 0
-		n = -n;
-	end
 
 	for s = 1:length(plan_2d{p}.grp_motion_diff)
 		ang_obj_incre = plan_2d{p}.obj_motion_diff(s);
@@ -148,11 +145,11 @@ for p = 1:NP-1
 
 		for i = 1:length(ang_obj_incre_array)	
 			% calculate
-			Robj = aa2mat(ang_obj + ang_obj_incre_array(i), n);
+			Robj = aa2mat(ang_obj + ang_obj_incre_array(i), -n*plan_2d{p}.dir);
 			Rgrp = aa2mat(ang_grp + ang_grp_incre_array(i), n);
 
 			updatePlot(gripper, Robj, Rgrp, gp10_w, gp20_w, qgrasp0_w, com_w, points_w,...
-				   h_vertices, h_cp, h_com, h_gravity, h_surf, h_fingertip_plus, h_fingertip_minus, ...
+				   h_cp, h_com, h_gravity, h_surf, h_fingertip_plus, h_fingertip_minus, ...
 				   h_finger_plus, h_finger_minus, h_palm);
 		end
 		ang_obj = ang_obj + ang_obj_incre;
@@ -179,7 +176,7 @@ for p = 1:NP-1
 		Robj  = quat2m(q0i_w);
 		Rgrp  = Robj;
 		updatePlot(gripper, Robj, Rgrp, gp10_w, gp20_w, qgrasp0_w, com_w, points_w,...
-				   h_vertices, h_cp, h_com, h_gravity, h_surf, h_fingertip_plus, h_fingertip_minus, ...
+				   h_cp, h_com, h_gravity, h_surf, h_fingertip_plus, h_fingertip_minus, ...
 			       h_finger_plus, h_finger_minus, h_palm);
 	end
 
@@ -203,7 +200,7 @@ end
 
 
 
-function updatePlot(gripper, Robj, Rgrp, gp1, gp2, qgp0, com, points, h_vertices, h_cp, h_com, h_gravity, h_surf, h_fingertip_plus, h_fingertip_minus, h_finger_plus, h_finger_minus, h_palm)
+function updatePlot(gripper, Robj, Rgrp, gp1, gp2, qgp0, com, points, h_cp, h_com, h_gravity, h_surf, h_fingertip_plus, h_fingertip_minus, h_finger_plus, h_finger_minus, h_palm)
 	gp1_ = Robj*gp1;
 	gp2_ = Robj*gp2;
 	com_ = Robj*com;
@@ -224,9 +221,9 @@ function updatePlot(gripper, Robj, Rgrp, gp1, gp2, qgp0, com, points, h_vertices
 	cp_       = ps_(:,cpid);
 
 	% update plot
-	h_vertices.XData  = ps_(1,:);
-	h_vertices.YData  = ps_(2,:);
-	h_vertices.ZData  = ps_(3,:);
+	% h_vertices.XData  = ps_(1,:);
+	% h_vertices.YData  = ps_(2,:);
+	% h_vertices.ZData  = ps_(3,:);
 	h_cp.XData        = cp_(1,:);
 	h_cp.YData        = cp_(2,:);
 	h_cp.ZData        = cp_(3,:);

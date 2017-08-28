@@ -242,9 +242,11 @@ while true
                     case -1
                         disp(['  --- Grasp ' num2str(i) ' Required rolling exceeds gripper tilt limit']);
                     case -3
-                        disp(['  --- Grasp ' num2str(i) ' Initial grasp pos violates gripper tilt limit ']);
+                        disp(['  --- Grasp ' num2str(i) ' Initial/final grasp pos violates gripper tilt limit ']);
                     case -4
-                        disp(['  --- Grasp ' num2str(i) ' Initial grasp pos violates gripper Z limit ']);
+                        disp(['  --- Grasp ' num2str(i) ' Initial/final grasp pos violates gripper Z limit ']);
+                    case -5
+                        disp(['  --- Grasp ' num2str(i) ' Gripper motion infeasible ']);
                     otherwise
                         error('Wrong flag');
                 end

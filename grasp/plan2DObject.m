@@ -12,7 +12,7 @@
 %       -1: required rolling exceeds gripper tilt limit
 %       -3: initial grasp pos violates gripper tilt limit 
 %       -4: initial grasp pos violates gripper Z limit 
-function	[plan, init_gripper_ang, flag] = plan2DObject(g, goal, com, gp, Rw_2d, ps, ps_err, cmat, cf_range, cf_init_id, gripper_cone_width, para)
+function	[plan, init_gripper_ang, flag] = plan2DObject(g, init, goal, com, gp, Rw_2d, ps, ps_err, cmat, cf_range, cf_init_id, gripper_cone_width, para)
 % rotate so that gy points down
 R    = matBTVec([g(1:2); 0], [0 -1 0]');
 g    = R*g; % should be [0 -1 ?]
@@ -20,7 +20,10 @@ ps   = R*ps;
 gp   = R*gp;
 com  = R*com;
 goal = R*goal;  % goal(3) should = 0
-init = R*[0; 1; 0];
+init = R*init;  % init(3) should = 0
+assert(abs(init(3))<1e-3);
+assert(abs(goal(3))<1e-3);
+
 
 % check initial grasp orientation
 if norm(g(1:2)) < 1e-2
@@ -38,7 +41,7 @@ if init(2) < cos(gripper_cone_width)
 end
 
 
-init_gripper_ang = angBTVec([g(1:2); 0], [0 -1 0]', [0 0 1]');
+init_gripper_ang = angBTVec([0 1 0]', init, [0 0 1]');
 cf_zero_id       = cf_init_id - round(180/pi*init_gripper_ang);
 
 gripper_cone_right = [sin(gripper_cone_width),  cos(gripper_cone_width), 0]';
@@ -175,8 +178,8 @@ for d = 1:2
             flag  = -1; % flag could be re-written later, if success
             break; % stop current rolling, try the other direction
         end
-        motion          = [motion s_motion];
-        rtype           = [rtype s_rtype];
+        motion = [motion s_motion];
+        rtype  = [rtype s_rtype];
         
         % yes we can
         % so do the rotation

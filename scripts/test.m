@@ -1,3 +1,22 @@
+load debug1
+qi  = quatSlerp(q_now, qf, t);
+
+ang_tol = angBTquat(q_now, qf);
+N = length(t);
+ang = zeros(N,1);
+for i = 1:N-1
+	ang(i) = angBTquat(qi(:,i), qi(:,i+1));
+end
+disp(ang_tol)
+disp(ang);
+disp(sum(ang));
+return
+
+
+
+
+
+
 global para fgraph pgraph mesh mesh_s grasps gripper q0 qf
 clc;
 % -----------------------------------------------

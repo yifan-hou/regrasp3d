@@ -5,7 +5,10 @@
 %   gp1, gp2: 3x1, grasp pos in world frame
 %   range0: 360x1, array of collision checking results in original frame
 %   qg: pose of gp1, gp2 measured in world frame
-function qg = getProperGrasp(gp1, gp2, range0, q0, gp10, gp20, para)
+% Outputs:
+%   qg: a collision free orientation
+%   qframe: the grasp frame
+function [qg qframe] = getProperGrasp(gp1, gp2, range0, q0, gp10, gp20, para)
 v  = gp1 - gp2;
 v  = v/norm(v);
 
@@ -43,6 +46,7 @@ end
 % % check:
 % v
 % quatOnVec([1 0 0]', qg)
+qframe = qg;
 
 if nargin < 3
     return;

@@ -25,6 +25,24 @@ for s = 1:N
 
 	if object_plan.rtype(s) == 0
 		% Now is a roll
+		% check termination
+		if obj_motion_acc_nxt + 1e-5 > obj_ending_2
+
+			% terminate! check success
+			if object_plan.dir > 0
+				if abs(grp_motion_acc - (obj_ending_2 - obj_motion_acc)) < 1e-3
+					break;
+				end
+			else
+				if abs(2*gripper_cone_width - grp_motion_acc - (obj_ending_2 - obj_motion_acc)) < 1e-3
+					break;
+				end
+			end
+			% fail
+			plan = [];
+			return;
+		end
+
 		grp_motion_diff(s) = -object_plan.dir*object_plan.motion(s);
 		grp_motion_acc     = grp_motion_acc + grp_motion_diff(s);
 		roll_count         = roll_count + 1;
@@ -35,7 +53,7 @@ for s = 1:N
 
 			% terminate!
 			if obj_motion_acc > obj_ending_1
-				% no object rolling is needed, just rotate the gripper
+				% no object rotation is needed, just rotate the gripper
 				object_plan.motion(s) = 0; 
 				if object_plan.dir > 0
 					grp_motion_diff(s) = gripper_cone_width*2 - grp_motion_acc - (obj_motion_acc - obj_ending_1); %ok
