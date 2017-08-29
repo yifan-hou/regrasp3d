@@ -62,13 +62,13 @@ gp2p_w    = quatOnVec(gp2o_w, qp);
 [~, qP_w] = getProperGrasp(gp1p_w, gp2p_w); % p frame, measured in world frame
 
 % calculate the gripper motion constraints for 2D problem
-zP_w          = quatOnVec([0 0 1]', qP_w); % z axis of p frame, measured in w frame
+zP_w               = quatOnVec([0 0 1]', qP_w); % z axis of p frame, measured in w frame
 tilted_ang         = angBTVec([0 0 1]', zP_w);
 gripper_cone_width = tiltedConeAng(para.GRIPPER_TILT_LIMIT, tilted_ang);
 if tilted_ang > para.GRIPPER_TILT_LIMIT
     flag = -3;
 	return;
-end 
+end
 
 q0p_w      = quatMTimes(qp, quatInv(q0));  % a rotation that rotates q0 to qp, measured in world frame
 qgrasp0p_w = quatMTimes(q0p_w, qgrasp0_w); % grasp 0, rotated to p, measured in world frame
