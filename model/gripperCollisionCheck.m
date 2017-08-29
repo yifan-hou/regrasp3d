@@ -14,6 +14,11 @@ feasible_range = [];
 % 	Use full mesh
 % ----------------------------------------------
 % Check fingertips, regardless of object orientation
+if norm(gp(:,1) - gp(:,2)) < 1e-3
+    qgrasp = [0 0 0 0]';
+    return;
+end
+
 qgrasp = getProperGrasp(gp(:,1), gp(:,2)); 
 
 % open finger a little big when checking fingertip
@@ -26,8 +31,8 @@ gp_delta(:, 2) = gp(:, 2) - (DELTA + 0.01)*ax;
 % plotObject(mesh, 1);
 % plotGripper(1, gripper, [1 0 0 0]', gp, qgrasp);
 
-fingertip_plus.vertices  = bsxfun(@plus, quatOnVec(gripper.vertices{1}, qgrasp), gp_delta(:, 1))';
-fingertip_minus.vertices = bsxfun(@plus, quatOnVec(gripper.vertices{2}, qgrasp), gp_delta(:, 2))';
+fingertip_plus.vertices  = bsxfun(@plus, quatOnVec(gripper.vertices_safe{1}, qgrasp), gp_delta(:, 1))';
+fingertip_minus.vertices = bsxfun(@plus, quatOnVec(gripper.vertices_safe{2}, qgrasp), gp_delta(:, 2))';
 fingertip_plus.faces     = gripper.faces{1};
 fingertip_minus.faces    = gripper.faces{2};
 
@@ -43,8 +48,8 @@ end
 
 gp_delta(:, 1) = gp(:, 1) + DELTA*ax;
 gp_delta(:, 2) = gp(:, 2) - DELTA*ax;
-fingertip_plus.vertices  = bsxfun(@plus, quatOnVec(gripper.vertices{1}, qgrasp), gp_delta(:, 1))';
-fingertip_minus.vertices = bsxfun(@plus, quatOnVec(gripper.vertices{2}, qgrasp), gp_delta(:, 2))';
+fingertip_plus.vertices  = bsxfun(@plus, quatOnVec(gripper.vertices_safe{1}, qgrasp), gp_delta(:, 1))';
+fingertip_minus.vertices = bsxfun(@plus, quatOnVec(gripper.vertices_safe{2}, qgrasp), gp_delta(:, 2))';
 % check with precise model
 [~, surf] = SurfaceIntersection(mesh, fingertip_plus, 'debug', false);
 if checkResult(surf)
@@ -72,22 +77,22 @@ palm.faces         = gripper.faces{5};
 for i = 1:360
 	feasible_range(i) = true;
 
-	finger_plus.vertices = bsxfun(@plus, quatOnVec(gripper.vertices{3}, gq(:, i)), gp(:,1))';
+	finger_plus.vertices = bsxfun(@plus, quatOnVec(gripper.vertices_safe{3}, gq(:, i)), gp(:,1))';
 	[~, surf]            = SurfaceIntersection(mesh_s, finger_plus, 'debug', false);
 	if checkResult(surf)
 		feasible_range(i) = false;
 		continue;
 	end	
 
-	finger_minus.vertices = bsxfun(@plus, quatOnVec(gripper.vertices{4}, gq(:, i)), gp(:,2))';
+	finger_minus.vertices = bsxfun(@plus, quatOnVec(gripper.vertices_safe{4}, gq(:, i)), gp(:,2))';
 	[~, surf]             = SurfaceIntersection(mesh_s, finger_minus, 'debug', false);
 	if checkResult(surf)
 		feasible_range(i) = false;
 		continue;
 	end	
 
-	palm_plus     = bsxfun(@plus, quatOnVec(gripper.vertices{5}, gq(:, i)), gp(:,1));
-	palm_minus    = bsxfun(@plus, quatOnVec(gripper.vertices{6}, gq(:, i)), gp(:,2));
+	palm_plus     = bsxfun(@plus, quatOnVec(gripper.vertices_safe{5}, gq(:, i)), gp(:,1));
+	palm_minus    = bsxfun(@plus, quatOnVec(gripper.vertices_safe{6}, gq(:, i)), gp(:,2));
 	palm.vertices = [palm_plus palm_minus]';
 	[~, surf]     = SurfaceIntersection(mesh_s, palm, 'debug', false);
 	if checkResult(surf)
@@ -110,7 +115,7 @@ else
 			feasible_range(start1(i):end1(i)) = 0;
 		end
 	end
-end	
+end
 
 
 
