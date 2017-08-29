@@ -21,7 +21,7 @@ para.COLLISION_FREE_ANGLE_MARGIN = 5; % stay away from collsion for at least 5 d
 									  % has to be an positive integer
 
 % Popups 
-para.showObject             = true; % show object and the simplified object
+para.showObject             = false; % show object and the simplified object
 para.showObject_id          = [1 2 3];
 para.showStablePoses        = false;
 para.showStablePoses_id     = 1;
@@ -33,7 +33,8 @@ para.showProblem_id         = [1 2 3];
 % get object mesh
 file_dir = dir('../model/data/*.stl');
 for i = 1:length(file_dir)
-	filename = file_dir(i).name;
+	filename = file_dir(i).name;	
+	disp(['Processing # ' num2str(i) ' of ' num2str(length(file_dir)) ', name: ' filename]);
 	[fgraph, pgraph, mesh, mesh_s] = getObject(para, filename);
 	gripper                        = getGripper();
 	[grasps, fgraph]               = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para);
