@@ -2,6 +2,11 @@
 % 		Offline-computation
 % -----------------------------------------------
 clear;clc;
+
+addpath ../grasp
+addpath ../model
+addpath ../model/data
+
 % Constraints
 para.GRIPPER_TILT_LIMIT = 40*pi/180; % tilting angle tolerance
 para.GRIPPER_Z_LIMIT    = 0.2; % finger position limit
