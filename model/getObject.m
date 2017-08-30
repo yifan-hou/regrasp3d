@@ -4,7 +4,10 @@
 function [fgraph, pgraph, mesh, mesh_s] = getObject(para, stlname) 
 
 disp('[GetObject] Reading STL model..');
-fv = stlread(stlname);
+fv          = stlread(stlname);
+[v, f]      = patchslim(fv.vertices, fv.faces);
+fv.vertices = v;
+fv.faces    = f;
 
 disp('[GetObject] Processing Model..');
 % --------------------------------------------

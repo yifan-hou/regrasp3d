@@ -16,7 +16,7 @@ para.GRIPPER_Z_LIMIT    = 0.2; % finger position limit
 para.MU = 0.5;
 
 % Grasp sampling
-para.NGS            = 10; % number of grasp pos samplings
+para.NGS            = 200; % number of grasp pos samplings
 para.ANGLE_TOL      = 0.1; % rad  % grasp axis tolerance
 para.COM_DIST_LIMIT = 0.8; % meter
 
@@ -37,12 +37,12 @@ para.showProblem_id         = [1 2 3];
 
 % get object mesh
 file_dir = dir('../model/data/*.stl');
-for i = 1:length(file_dir)
+for i = 10:length(file_dir)
 	filename = file_dir(i).name;	
 	disp(['Processing # ' num2str(i) ' of ' num2str(length(file_dir)) ', name: ' filename]);
 	[fgraph, pgraph, mesh, mesh_s] = getObject(para, filename);
 	gripper                        = getGripper();
 	[grasps, fgraph]               = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para);
 	full_path = ['../model/data/' filename(1:end-4) '.mat'];
-	save full_path fgraph pgraph mesh mesh_s grasps fgraph;
+	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps', 'fgraph');
 end
