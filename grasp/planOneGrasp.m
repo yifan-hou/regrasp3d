@@ -42,7 +42,7 @@ end
 % find out the slice of collision-free range
 ax0_w                = quatOnVec([1 0 0]', qgrasp0_w); % grasp axis in world frame
 gripper0_w           = quatOnVec([0 0 1]', qgrasp0_w); % initial gripper orientation in world frame
-ref_frame            = quatMTimes(q0, grasps.frame(:, grasp_id));
+ref_frame            = quatMTimes(q0, grasps.ref_frame(:, grasp_id));
 ref                  = quatOnVec([0 0 1]', ref_frame);
 init_sf_id           = angBTVec(ref, gripper0_w, ax0_w, 1);
 init_sf_id           = floor(180/pi*init_sf_id) + 1;

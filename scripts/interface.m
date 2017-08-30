@@ -22,7 +22,7 @@ function varargout = interface(varargin)
 
 % Edit the above text to modify the response to help interface
 
-% Last Modified by GUIDE v2.5 31-Jul-2017 11:22:49
+% Last Modified by GUIDE v2.5 30-Aug-2017 11:00:06
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -55,6 +55,9 @@ function interface_OpeningFcn(hObject, eventdata, handles, varargin)
 % Choose default command line output for interface
 handles.output = hObject;
 
+files = dir('../model/data/*.mat');
+set(handles.LB_files,'string',{files.name});
+
 % Update handles structure
 guidata(hObject, handles);
 
@@ -83,7 +86,7 @@ varargout{1} = handles.output;
 
 
 function BTN_load_model_Callback(hObject, eventdata, handles)
-global para fgraph pgraph mesh mesh_s grasps gripper q0 qf
+global filename para fgraph pgraph mesh mesh_s grasps gripper q0 qf
 clc;
 % -----------------------------------------------
 % 		Offline-computation
@@ -119,15 +122,15 @@ para.show2Dproblem          = false;
 para.show2Dproblem_id       = 4;
 
 % get object mesh
-filename = 'planefrontstay.stl';
-% filename = 'sandpart2.stl';
+% filename = 'planefrontstay.stl';
 
 % [fgraph, pgraph, mesh, mesh_s] = getObject(para, filename);
 gripper                        = getGripper();
 % [grasps, fgraph]               = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para);
 % save ../model/data/planefrontstay_data.mat fgraph pgraph mesh mesh_s grasps fgraph;
 
-load planefrontstay_data
+load(filename);
+
 
 % visualize all the checked grasps
 if para.showCheckedGrasp
@@ -185,22 +188,24 @@ for m = 1:fgraph.NM
 		adj_matrix(fgraph.NM+2, m) = 1;
 	end
 end
+adj_matrix(fgraph.NM+1, fgraph.NM+1) = 1;
+adj_matrix(fgraph.NM+2, fgraph.NM+2) = 1;
+disp('Adjacent Matrix:');
+disp(adj_matrix);
 if any(grasp_id_f&grasp_id_0)
 	adj_matrix(fgraph.NM+1, fgraph.NM+2) = 1;
 	adj_matrix(fgraph.NM+2, fgraph.NM+1) = 1;
 end
 if ~any(grasp_id_0)
-	disp('[Planning] No Solution. No feasible grasp for initial pose.');
+	set(handles.BTN_animate, 'Enable', 'off');
+	disp('[Planning] No Solution. No feasible initial grasps.');
 	return;
 end
 if ~any(grasp_id_f)
-	disp('[Planning] No Solution. No feasible grasp for final pose.');
+	set(handles.BTN_animate, 'Enable', 'off');
+	disp('[Planning] No Solution. No feasible final grasps.');
 	return;
 end
-adj_matrix(fgraph.NM+1, fgraph.NM+1) = 1;
-adj_matrix(fgraph.NM+2, fgraph.NM+2) = 1;
-disp('Adjacent Matrix:');
-disp(adj_matrix);
 
 mode_grasps = [fgraph.grasps; grasp_id_0; grasp_id_f];
 path_counter = 1;
@@ -303,4 +308,30 @@ global path_found path_q path_graspid path_qp plan_2d
 
 if path_found
 	animatePlan(mesh, grasps, gripper, handles.AX_animation, path_q, path_graspid, path_qp, plan_2d);
+end
+
+
+% --- Executes on selection change in LB_files.
+function LB_files_Callback(hObject, eventdata, handles)
+global filename;
+% hObject    handle to LB_files (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns LB_files contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from LB_files
+contents = cellstr(get(hObject,'String'));
+filename = contents{get(hObject,'Value')};
+
+
+% --- Executes during object creation, after setting all properties.
+function LB_files_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to LB_files (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: listbox controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
 end
