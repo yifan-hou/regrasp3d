@@ -57,19 +57,18 @@ disp(['[GetObject] Mesh Approximation Error: ' num2str(mesh_s.err_bound) ]);
 % --------------------------------------------
 fvc_id    = convhull(fv.vertices, 'simplify',true);
 fvr       = reducepatch(fvc_id, fv.vertices, 100);
-err_bound = hausdorffDist(fv.vertices(fvc_id, :)', fvr.vertices');
 NFC       = size(fvr.faces, 1);
 NPC       = size(fvr.vertices, 1);
 assert(NPC == max(max(fvr.faces)));
-disp(['[GetObject] Convex Hull Approximation Error: ' num2str(err_bound) ]);
 
-% face_conv = convhull(fv.vertices, 'simplify',true);
-% NFC       = size(face_conv, 1); 
-% ch_pid    = unique(face_conv);
-% NPC		  = length(ch_pid);
-% ch_pid_ch = 1:NPC;
-% [~,idx] = ismember(face_conv, ch_pid);
-% face_conv = ch_pid_ch(idx);
+% evaluate decimation error
+fvc.faces     = fvc_id;
+fvc.vertices  = fv.vertices;
+sampled_cvh   = sampleMeshUniform(fvc, 10000);
+sampled_cvh_r = sampleMeshUniform(fvr, 10000);
+
+[err_bound, err_id1, err_id2] = hausdorffDist(sampled_cvh, sampled_cvh_r);
+disp(['[GetObject] Convex Hull Approximation Error: ' num2str(err_bound) ]);
 
 % get adjacent matrix
 pch_adj_matrix = sparse( fvr.faces(:,1), fvr.faces(:,2), 1, NPC, NPC ) + ...
@@ -147,7 +146,9 @@ if para.showObject
 
 	% convex hull
 	figure(para.showObject_id(2)); clf; hold on;
-	plot3(fv.vertices(fvc_id, 1), fv.vertices(fvc_id, 2), fv.vertices(fvc_id, 3), '.');
+	% plot3(fv.vertices(fvc_id, 1), fv.vertices(fvc_id, 2), fv.vertices(fvc_id, 3), 'b.');
+	plot3(sampled_cvh(1, :), sampled_cvh(2, :), sampled_cvh(3, :), '.b', 'markersize', 2);
+	plot3(sampled_cvh(1, err_id1), sampled_cvh(2, err_id1), sampled_cvh(3, err_id1), '.r', 'markersize', 8);
 	patch('Faces', fvc_id, 					...
 		  'vertices', fv.vertices,  		...
 		  'FaceColor',       [0.8 0.8 1.0], ...
@@ -157,15 +158,15 @@ if para.showObject
 	camlight('headlight'); material('dull'); axis equal; view(-43, 27);
 	% Decimated convex hull
 	figure(para.showObject_id(3)); clf; hold on;
-	plot3(fvr.vertices(:,1), fvr.vertices(:,2), fvr.vertices(:,3), '.');
+	% plot3(fvr.vertices(:,1), fvr.vertices(:,2), fvr.vertices(:,3), '.b');
+	plot3(sampled_cvh_r(1, :), sampled_cvh_r(2, :), sampled_cvh_r(3, :), '.b', 'markersize', 2);
+	plot3(sampled_cvh_r(1, err_id2), sampled_cvh_r(2, err_id2), sampled_cvh_r(3, err_id2), '.r', 'markersize', 8);
 	patch(fvr, ...
 		  'FaceColor',       [0.8 0.8 1.0], ...
 	      'EdgeColor',       'none',        ...
 	      'FaceLighting',    'gouraud',     ...
 	      'AmbientStrength', 0.15);
 	camlight('headlight'); material('dull'); axis equal; view(-43, 27);
-	% [dist, id1, id2] = hausdorffDist(fv.vertices(fvc_id, :)', fvr.vertices');
-	% plot3([fv.vertices(fvc_id(id1), 1) fvr.vertices(id2, 1)], [fv.vertices(fvc_id(id1), 2) fvr.vertices(id2, 2)], [fv.vertices(fvc_id(id1), 3) fvr.vertices(id2, 3)], '-r.');
 end
 
 disp('[GetObject] Done.');

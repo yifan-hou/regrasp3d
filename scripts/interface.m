@@ -110,16 +110,18 @@ para.COLLISION_FREE_ANGLE_MARGIN = 5; % stay away from collsion for at least 5 d
 									  % has to be an positive integer
 
 % Popups 
-para.showObject             = true; % show object and the simplified object
-para.showObject_id          = [1 2 3];
-para.showStablePoses        = false;
-para.showStablePoses_id     = 1;
-para.showCheckedGrasp       = true;
-para.showCheckedGrasp_id    = 1;
-para.showProblem            = false;
-para.showProblem_id         = [1 2 3];
-para.show2Dproblem          = false;
-para.show2Dproblem_id       = 4;
+% para.showObject             = true; % show object and the simplified object
+% para.showObject_id          = [1 2 3];
+% para.showStablePoses        = false;
+% para.showStablePoses_id     = 1;
+para.showCheckedGrasp     = true;
+para.showCheckedGrasp_id  = 1;
+para.showGraspChecking    = false;
+para.showGraspChecking_id = [2 3];
+para.showProblem          = false;
+para.showProblem_id       = [1 2 3];
+para.show2Dproblem        = false;
+para.show2Dproblem_id     = 4;
 
 % get object mesh
 % filename = 'planefrontstay.stl';
@@ -170,8 +172,8 @@ global path_found path_q path_graspid path_qp plan_2d % outputs
 
 disp('[Planning] Planning begin.');
 % get grasp points for initial and final pose
-grasp_id_0 = checkGraspPoints(grasps, mesh, pgraph, q0, para);
-grasp_id_f = checkGraspPoints(grasps, mesh, pgraph, qf, para);
+grasp_id_0 = checkGraspPoints(grasps, mesh, pgraph, q0, para.showGraspChecking_id(1), para);
+grasp_id_f = checkGraspPoints(grasps, mesh, pgraph, qf, para.showGraspChecking_id(2), para);
 
 % treat initial/final pose as additional mode
 % build the full graph

@@ -35,14 +35,28 @@ para.showCheckedGrasp_id    = 1;
 para.showProblem            = false;
 para.showProblem_id         = [1 2 3];
 
-% get object mesh
+
+% % get object mesh
+% file_dir = dir('../model/data/*.stl');
+% for i = 6:length(file_dir)
+% 	filename = file_dir(i).name;	
+% 	disp(['Processing # ' num2str(i) ' of ' num2str(length(file_dir)) ', name: ' filename]);
+% 	[fgraph, pgraph, mesh, mesh_s] = getObject(para, filename);
+% 	gripper                        = getGripper();
+% 	[grasps, fgraph]               = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para);
+% 	full_path = ['../model/data/' filename(1:end-4) '.mat'];
+% 	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps');
+% end
+
+% modify error bound
 file_dir = dir('../model/data/*.stl');
-for i = 10:length(file_dir)
-	filename = file_dir(i).name;	
-	disp(['Processing # ' num2str(i) ' of ' num2str(length(file_dir)) ', name: ' filename]);
-	[fgraph, pgraph, mesh, mesh_s] = getObject(para, filename);
-	gripper                        = getGripper();
-	[grasps, fgraph]               = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para);
+for i = 1:length(file_dir)
+	filename  = file_dir(i).name;	
 	full_path = ['../model/data/' filename(1:end-4) '.mat'];
-	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps', 'fgraph');
+	load(full_path);
+	disp(['Processing # ' num2str(i) ' of ' num2str(length(file_dir)) ', name: ' filename]);
+	disp(['err_bound was ' num2str(pgraph.err_bound)]);
+	[~, pgraph_amended, ~, ~] = getObject(para, filename);
+	pgraph.err_bound          = pgraph_amended.err_bound;
+	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps');
 end
