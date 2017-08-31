@@ -55,20 +55,14 @@ disp(['[GetObject] Mesh Approximation Error: ' num2str(mesh_s.err_bound) ]);
 % 		Convex Hull
 % 		And Decimation
 % --------------------------------------------
-fvc_id    = convhull(fv.vertices, 'simplify',true);
-fvr       = reducepatch(fvc_id, fv.vertices, 100);
-NFC       = size(fvr.faces, 1);
-NPC       = size(fvr.vertices, 1);
-assert(NPC == max(max(fvr.faces)));
-
-% evaluate decimation error
-fvc.faces     = fvc_id;
-fvc.vertices  = fv.vertices;
-sampled_cvh   = sampleMeshUniform(fvc, 10000);
-sampled_cvh_r = sampleMeshUniform(fvr, 10000);
-
-[err_bound, err_id1, err_id2] = hausdorffDist(sampled_cvh, sampled_cvh_r);
+fvc.faces                 = convhull(fv.vertices, 'simplify',true);
+[fvc.vertices, fvc.faces] = patchslim(fv.vertices, fvc.faces);
+[fvr, err_bound]          = simplifyConvHull(fvc, para);
 disp(['[GetObject] Convex Hull Approximation Error: ' num2str(err_bound) ]);
+
+NPC = size(fvr.vertices, 1);
+NFC = size(fvr.faces, 1);
+assert(NPC == max(max(fvr.faces)));
 
 % get adjacent matrix
 pch_adj_matrix = sparse( fvr.faces(:,1), fvr.faces(:,2), 1, NPC, NPC ) + ...
@@ -76,8 +70,8 @@ pch_adj_matrix = sparse( fvr.faces(:,1), fvr.faces(:,2), 1, NPC, NPC ) + ...
 			     sparse( fvr.faces(:,3), fvr.faces(:,1), 1, NPC, NPC );
 pch_adj_matrix = (pch_adj_matrix + pch_adj_matrix.')>0;
 
-disp(['[GetObject] Points on Convex Hull: ' num2str(length(unique(fvc_id))) ]);
-disp(['[GetObject] Points on Simplified Convex Hull: ' num2str(NPC) ]);
+disp(['[GetObject] Reduce from: ' num2str(size(fvc.faces, 1)) 'f, ' num2str(size(fvc.vertices, 1)) 'v' ]);
+disp(['[GetObject] To:          ' num2str(NFC) 'f, ' num2str(size(fvr.vertices, 1)) 'v' ]);
 
 % --------------------------------------------
 % 		stable modes
@@ -143,14 +137,15 @@ if para.showObject
 	disp('[GetObject] Plotting Object:');
 	% full mesh
 	plotObject(mesh, para.showObject_id(1));
+	title('Object Mesh')
 
 	% convex hull
 	figure(para.showObject_id(2)); clf; hold on;
-	% plot3(fv.vertices(fvc_id, 1), fv.vertices(fvc_id, 2), fv.vertices(fvc_id, 3), 'b.');
-	plot3(sampled_cvh(1, :), sampled_cvh(2, :), sampled_cvh(3, :), '.b', 'markersize', 2);
-	plot3(sampled_cvh(1, err_id1), sampled_cvh(2, err_id1), sampled_cvh(3, err_id1), '.r', 'markersize', 8);
-	patch('Faces', fvc_id, 					...
-		  'vertices', fv.vertices,  		...
+	title('Convex Hull')
+	plot3(fvc.vertices(:, 1), fvc.vertices(:, 2), fvc.vertices(:, 3), 'b.');
+	% plot3(sampled_cvh(1, :), sampled_cvh(2, :), sampled_cvh(3, :), '.b', 'markersize', 2);
+	% plot3(sampled_cvh(1, err_id1), sampled_cvh(2, err_id1), sampled_cvh(3, err_id1), '.r', 'markersize', 8);
+	patch(fvc, ...
 		  'FaceColor',       [0.8 0.8 1.0], ...
 	      'EdgeColor',       'none',        ...
 	      'FaceLighting',    'gouraud',     ...
@@ -158,9 +153,10 @@ if para.showObject
 	camlight('headlight'); material('dull'); axis equal; view(-43, 27);
 	% Decimated convex hull
 	figure(para.showObject_id(3)); clf; hold on;
-	% plot3(fvr.vertices(:,1), fvr.vertices(:,2), fvr.vertices(:,3), '.b');
-	plot3(sampled_cvh_r(1, :), sampled_cvh_r(2, :), sampled_cvh_r(3, :), '.b', 'markersize', 2);
-	plot3(sampled_cvh_r(1, err_id2), sampled_cvh_r(2, err_id2), sampled_cvh_r(3, err_id2), '.r', 'markersize', 8);
+	title('Decimated Convex Hull')
+	plot3(fvr.vertices(:,1), fvr.vertices(:,2), fvr.vertices(:,3), '.b');
+	% plot3(sampled_cvh_r(1, :), sampled_cvh_r(2, :), sampled_cvh_r(3, :), '.b', 'markersize', 2);
+	% plot3(sampled_cvh_r(1, err_id2), sampled_cvh_r(2, err_id2), sampled_cvh_r(3, err_id2), '.r', 'markersize', 8);
 	patch(fvr, ...
 		  'FaceColor',       [0.8 0.8 1.0], ...
 	      'EdgeColor',       'none',        ...
@@ -170,5 +166,36 @@ if para.showObject
 end
 
 disp('[GetObject] Done.');
+
+end
+
+
+
+
+function [fvr, err_bound] = simplifyConvHull(fvc, para)
+
+if size(fvc.faces, 1) < para.NF_CVR
+	fvr.faces    = fvc.faces;
+	fvr.vertices = fvc.vertices;
+	err_bound    = 0;
+	return;
+end
+
+fvr                   = reducepatch(fvc.faces, fvc.vertices, para.NF_CVR);
+[err_bound, id1, id2] = hausdorffDist(fvc.vertices', fvr.vertices', true); % single side hausdorff distance
+additional_points     = [];
+while err_bound > para.err_tol_CVR
+	% add the farest point to the reduced convex hull
+	additional_points     = [additional_points; fvc.vertices(id1, :)];
+	new_vertices          = [fvr.vertices; additional_points];
+	[err_bound, id1, id2] = hausdorffDist(fvc.vertices', new_vertices', true); % single side hausdorff distance
+end
+
+fvr.faces                 = convhull(new_vertices, 'simplify',true);
+[fvr.vertices, fvr.faces] = patchslim(new_vertices, fvr.faces);
+
+
+% evaluate decimation error
+[err_bound, id1, id2] = hausdorffDist(fvc.vertices', fvr.vertices');
 
 end

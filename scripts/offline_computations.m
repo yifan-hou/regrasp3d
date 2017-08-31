@@ -3,7 +3,7 @@
 % -----------------------------------------------
 clear;clc;
 
-addpath ../grasp
+addpath ../planning
 addpath ../model
 addpath ../model/data
 
@@ -20,13 +20,18 @@ para.NGS            = 200; % number of grasp pos samplings
 para.ANGLE_TOL      = 0.1; % rad  % grasp axis tolerance
 para.COM_DIST_LIMIT = 0.8; % meter
 
+% convex hull simplification parameters
+para.NF_CVR = 80; % target number of faces on the simplified convex hull
+para.err_tol_CVR = 0.05;
+
+
 % planning parameter
 para.PIVOTABLE_CHECK_GRANULARITY = 1*pi/180; % 1 sample every 1 degree
 para.COLLISION_FREE_ANGLE_MARGIN = 5; % stay away from collsion for at least 5 degrees
 									  % has to be an positive integer
 
 % Popups 
-para.showObject             = false; % show object and the simplified object
+para.showObject             = true; % show object and the simplified object
 para.showObject_id          = [1 2 3];
 para.showStablePoses        = false;
 para.showStablePoses_id     = 1;
@@ -57,6 +62,6 @@ for i = 1:length(file_dir)
 	disp(['Processing # ' num2str(i) ' of ' num2str(length(file_dir)) ', name: ' filename]);
 	disp(['err_bound was ' num2str(pgraph.err_bound)]);
 	[~, pgraph_amended, ~, ~] = getObject(para, filename);
-	pgraph.err_bound          = pgraph_amended.err_bound;
-	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps');
+% 	pgraph.err_bound          = pgraph_amended.err_bound;
+% 	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps');
 end
