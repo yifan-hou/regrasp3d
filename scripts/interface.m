@@ -63,7 +63,7 @@ guidata(hObject, handles);
 
 % UIWAIT makes interface wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
-addpath ../grasp
+addpath ../planning
 addpath ../model
 addpath ../model/data
 clc

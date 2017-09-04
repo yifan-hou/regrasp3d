@@ -54,11 +54,33 @@ while true
 			continue;
 		end
 
-		% normal is good, project grasp points
-		[grasp_points_face_j, in] = projectOntoTri(p2(:,1),p2(:,2),p2(:,3), grasp_points_face_i);
-		if ~in
+		% normal is good, sample the other grasp points, check angles
+		Ns_j                        = floor(mesh.area(j)*para.POINTJ_SAMPLE_DENSITY)+1; % # of sample points
+		grasp_points_face_j_samples = sampleTriUniform(p2(:,1), p2(:,2),p2(:,3), Ns_j);
+		angle_is_good               = false;
+        for s = 1:Ns_j
+            % check angles 
+            d12 = grasp_points_face_j_samples(:, s) - grasp_points_face_i;
+            if norm(d12) < 1e-3
+            	continue;
+            end
+            d12 = d12/norm(d12);
+			if (acos(abs(n1'*d12)) > ANGLE_TOL) || (acos(abs(n2'*d12)) > ANGLE_TOL)
+				continue;
+			end
+			angle_is_good = true;
+			grasp_points_face_j = grasp_points_face_j_samples(:, s);
+			break;
+		end
+
+		if ~angle_is_good
 			continue;
 		end
+
+		% [grasp_points_face_j, in] = projectOntoTri(p2(:,1),p2(:,2),p2(:,3), grasp_points_face_i);
+		% if ~in
+		% 	continue;
+		% end
 
 		% projection is good, check distance to COM
 		a        = norm(mesh.COM - grasp_points_face_i);
@@ -123,7 +145,7 @@ for i = 1:fgraph.NM
 		plotObject(mesh, para.showStablePoses_id, fgraph.quat(:,i));
     end
 
-    m_grasps(i,:) = checkGraspPoints(grasps, mesh, pgraph, fgraph.quat(:,i), para);
+    m_grasps(i,:) = checkGraspPoints(grasps, mesh, pgraph, fgraph.quat(:,i), para.showGraspChecking_id, para);
 end
 
 fgraph.grasps = m_grasps;

@@ -16,9 +16,11 @@ para.GRIPPER_Z_LIMIT    = 0.2; % finger position limit
 para.MU = 0.5;
 
 % Grasp sampling
-para.NGS            = 200; % number of grasp pos samplings
-para.ANGLE_TOL      = 0.1; % rad  % grasp axis tolerance
-para.COM_DIST_LIMIT = 0.8; % meter
+para.NGS                   = 100; % number of grasp pos samplings
+para.ANGLE_TOL             = 30*pi/180; % rad  % grasp axis tolerance
+para.COM_DIST_LIMIT        = 0.8; % meter
+para.POINTJ_SAMPLE_DENSITY = 100; % # of points per m^2
+
 
 % convex hull simplification parameters
 para.NF_CVR = 80; % target number of faces on the simplified convex hull
@@ -37,31 +39,33 @@ para.showStablePoses        = false;
 para.showStablePoses_id     = 1;
 para.showCheckedGrasp       = false;
 para.showCheckedGrasp_id    = 1;
+para.showGraspChecking      = false;
+para.showGraspChecking_id   = 2;
 para.showProblem            = false;
 para.showProblem_id         = [1 2 3];
 
 
-% % get object mesh
-% file_dir = dir('../model/data/*.stl');
-% for i = 6:length(file_dir)
-% 	filename = file_dir(i).name;	
-% 	disp(['Processing # ' num2str(i) ' of ' num2str(length(file_dir)) ', name: ' filename]);
-% 	[fgraph, pgraph, mesh, mesh_s] = getObject(para, filename);
-% 	gripper                        = getGripper();
-% 	[grasps, fgraph]               = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para);
-% 	full_path = ['../model/data/' filename(1:end-4) '.mat'];
-% 	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps');
-% end
-
-% modify error bound
+% get object mesh
 file_dir = dir('../model/data/*.stl');
 for i = 1:length(file_dir)
-	filename  = file_dir(i).name;	
-	full_path = ['../model/data/' filename(1:end-4) '.mat'];
-	load(full_path);
+	filename = file_dir(i).name;	
 	disp(['Processing # ' num2str(i) ' of ' num2str(length(file_dir)) ', name: ' filename]);
-	disp(['err_bound was ' num2str(pgraph.err_bound)]);
-	[~, pgraph_amended, ~, ~] = getObject(para, filename);
-% 	pgraph.err_bound          = pgraph_amended.err_bound;
-% 	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps');
+	[fgraph, pgraph, mesh, mesh_s] = getObject(para, filename);
+	gripper                        = getGripper();
+	[grasps, fgraph]               = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para);
+	full_path = ['../model/data/' filename(1:end-4) '.mat'];
+	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps');
 end
+
+% % modify error bound
+% file_dir = dir('../model/data/*.stl');
+% for i = 1:length(file_dir)
+% 	filename  = file_dir(i).name;	
+% 	full_path = ['../model/data/' filename(1:end-4) '.mat'];
+% 	load(full_path);
+% 	disp(['Processing # ' num2str(i) ' of ' num2str(length(file_dir)) ', name: ' filename]);
+% 	disp(['err_bound was ' num2str(pgraph.err_bound)]);
+% 	[~, pgraph_amended, ~, ~] = getObject(para, filename);
+% % 	pgraph.err_bound          = pgraph_amended.err_bound;
+% % 	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps');
+% end
