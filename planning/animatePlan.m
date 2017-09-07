@@ -29,67 +29,44 @@ else
 end
 
 % Initial plotting, get handles,
-Rgrp = quat2m(qgrasp0_w);
-fingertip_plus  = bsxfun(@plus, Rgrp*gripper.vertices{1}, gp10_w);
-fingertip_minus = bsxfun(@plus, Rgrp*gripper.vertices{2}, gp20_w);
-finger_plus     = bsxfun(@plus, Rgrp*gripper.vertices{3}, gp10_w);
-finger_minus    = bsxfun(@plus, Rgrp*gripper.vertices{4}, gp20_w);
-palm_plus       = bsxfun(@plus, Rgrp*gripper.vertices{5}, gp10_w);
-palm_minus      = bsxfun(@plus, Rgrp*gripper.vertices{6}, gp20_w);
-palm            = [palm_plus palm_minus];
 
-[~, cpid] = min(points_w(3,:));
+% contact points
+[~, cpid] = min(points_w(3,:)); 
 cpid      = abs(points_w(3,:) - points_w(3,cpid))<1e-5;
 cp_w      = points_w(:,cpid);
 
 % new plot
 hold on;
 % object
-% h_vertices = plot3(points_w(1,:), points_w(2,:), points_w(3,:), '.');
-h_cp	   = plot3(cp_w(1,:), cp_w(2,:), cp_w(3,:), '.k', 'markersize', 30);
-h_com	   = plot3(com_w(1), com_w(2), com_w(3), 'r*', 'markersize', 8);
-h_gravity  = plot3(com_w(1)+[0 0], com_w(2)+[0 0], com_w(3)+[0 -0.4], 'r-', 'linewidth', 2);
-h_surf     = patch('Faces',           mesh.faces,   ...
-				   'Vertices',        points_w',  ...
-				   'FaceColor',       [0.8 0.8 1.0], ...
-			       'EdgeColor',       'none',        ...
-			       'FaceLighting',    'gouraud',     ...
-			       'AmbientStrength', 0.15);
-camlight('headlight');
-material('dull');
-h_fingertip_plus  = trisurf(gripper.faces{1}, fingertip_plus(1,:), fingertip_plus(2,:), fingertip_plus(3,:), 'Facecolor', 'k', 'FaceAlpha', 0.9, 'linewidth', 0.1);
-h_fingertip_minus = trisurf(gripper.faces{2}, fingertip_minus(1,:), fingertip_minus(2,:), fingertip_minus(3,:), 'Facecolor', 'k', 'FaceAlpha', 0.9, 'linewidth', 0.1);
-h_finger_plus     = trisurf(gripper.faces{3}, finger_plus(1,:), finger_plus(2,:), finger_plus(3,:), 'Facecolor', 'b', 'FaceAlpha', 0.5);
-h_finger_minus    = trisurf(gripper.faces{4}, finger_minus(1,:), finger_minus(2,:), finger_minus(3,:), 'Facecolor', 'b', 'FaceAlpha', 0.5);
-h_palm            = trisurf(gripper.faces{5}, palm(1,:), palm(2,:), palm(3,:), 'Facecolor', 'b', 'FaceAlpha', 0.7);
+handles_object.surf    = plotObject(mesh, fidOrhandle, q0); % call plotObject without handle argument will clean the figure
+handles_gripper        = plotGripper(fidOrhandle, gripper, q0, [gp1o_w gp2o_w], qgrasp0_w);
+handles_object.cp      = plot3(cp_w(1,:), cp_w(2,:), cp_w(3,:), '.k', 'markersize', 30);
+handles_object.com     = plot3(com_w(1), com_w(2), com_w(3), 'r*', 'markersize', 8);
+handles_object.gravity = plot3(com_w(1)+[0 0], com_w(2)+[0 0], com_w(3)+[0 -0.4], 'r-', 'linewidth', 2);
 
 xlabel('X'); ylabel('Y'); zlabel('Z');
 view(-43, 27);
-
 
 NP = size(path_q, 2);
 for p = 1:NP-1
 	q0       = path_q(:,p);
 	qf       = path_q(:,p+1);
 	qp       = path_qp(:,p);
-	m0_o     = quat2m(q0);
-	com_w    = m0_o*mesh.COM;
-	points_w = m0_o*(mesh.vertices');
 
 	% grasp
-	gp1o_w    = grasps.points(:,path_graspid(p), 1);
+    gp1o_w    = grasps.points(:,path_graspid(p), 1);
 	gp2o_w    = grasps.points(:,path_graspid(p), 2);
 	gp10_w    = quatOnVec(gp1o_w, q0);
 	gp20_w    = quatOnVec(gp2o_w, q0);
 	qgrasp0_w = getProperGrasp(gp10_w, gp20_w); % grasp frame for q0, under world coordinate
 
+	qobj = q0;
+	qgrp = qgrasp0_w;
 	pause(0.5);
 	% First plot for one transition.
 	% Update position of gripper
 	
-	updatePlot(gripper, eye(3), eye(3), gp10_w, gp20_w, qgrasp0_w, com_w, points_w,...
-			   h_cp, h_com, h_gravity, h_surf, h_fingertip_plus, h_fingertip_minus, ...
-			   h_finger_plus, h_finger_minus, h_palm);
+	updatePlot(qobj, qgrp, gp1o_w, gp2o_w, gripper, mesh.COM, mesh.vertices', handles_object, handles_gripper) 
 
 	% --------------------------------------
 	% 	Pre-Rolling to qp
@@ -98,22 +75,22 @@ for p = 1:NP-1
 	t   = (0:(num+1))/(num+1);
 	qi  = quatSlerp(q0, qp, t);
 
-	h_fingertip_plus.FaceColor  = [0.9 0.1 0];
-	h_fingertip_minus.FaceColor = [0.9 0.1 0];
+	handles_gripper.fingertip_plus.FaceColor  = [0.9 0.1 0];
+	handles_gripper.fingertip_minus.FaceColor = [0.9 0.1 0];
 
+% 	qobj_now = qobj;
+	qgrp_now = qgrp;
 	for s = 1:length(t)
-		q0i_w = quatMTimes(qi(:,s), quatInv(q0)); % a rotation that rotates q0 to qi(:,s), measured in world frame
-		Robj  = quat2m(q0i_w);
-		Rgrp  = Robj;
-		updatePlot(gripper, Robj, Rgrp, gp10_w, gp20_w, qgrasp0_w, com_w, points_w,...
-				   h_cp, h_com, h_gravity, h_surf, h_fingertip_plus, h_fingertip_minus, ...
-			       h_finger_plus, h_finger_minus, h_palm);
+		qobj_incre = quatMTimes(qi(:,s), quatInv(q0)); % a rotation that rotates q0 to qi(:,s), measured in world frame
+
+		qobj  = qi(:,s);
+		qgrp  = quatMTimes(qobj_incre, qgrp_now);
+		updatePlot(qobj, qgrp, gp1o_w, gp2o_w, gripper, mesh.COM, mesh.vertices', handles_object, handles_gripper) 
 	end
 
 	% update states
-	[gp10_w, gp20_w, com_w, points_w, qgrasp0_w] = updateStates(gp10_w, gp20_w, com_w, points_w, qgrasp0_w, Robj, Rgrp);
-    % object: qp now
-    q_now = qp;
+	gp10_w = quatOnVec(gp10_w, qobj_incre);
+	gp20_w = quatOnVec(gp20_w, qobj_incre);
     
 	% --------------------------------------
 	% 	Pivoting
@@ -121,7 +98,9 @@ for p = 1:NP-1
 	ang_obj = 0;
 	ang_grp = 0;
 	n       = gp10_w - gp20_w; n = n/norm(n); % rotation axis
-
+    
+    qobj_now = qobj;
+    qgrp_now = qgrp;
 	for s = 1:length(plan_2d{p}.grp_motion_diff)
 		ang_obj_incre = plan_2d{p}.obj_motion_diff(s);
 		ang_grp_incre = plan_2d{p}.grp_motion_diff(s);
@@ -136,48 +115,46 @@ for p = 1:NP-1
 		ang_grp_incre_array = fixStepSample(0, ang_grp_incre, num);
 
 		if(plan_2d{p}.rtype(s) == 0)
-			h_fingertip_plus.FaceColor  = [0.9 0.1 0];
-			h_fingertip_minus.FaceColor = [0.9 0.1 0];
+			handles_gripper.fingertip_plus.FaceColor  = [0.9 0.1 0];
+			handles_gripper.fingertip_minus.FaceColor = [0.9 0.1 0];
 		else
-			h_fingertip_plus.FaceColor  = [0.1 0.0 0.9];
-			h_fingertip_minus.FaceColor = [0.1 0.0 0.9];
+			handles_gripper.fingertip_plus.FaceColor  = [0.1 0.0 0.9];
+			handles_gripper.fingertip_minus.FaceColor = [0.1 0.0 0.9];
 		end
 
+		
 		for i = 1:length(ang_obj_incre_array)	
 			% calculate
-			Robj = aa2mat(ang_obj + ang_obj_incre_array(i), -n*plan_2d{p}.dir);
-			Rgrp = aa2mat(ang_grp + ang_grp_incre_array(i), n);
+			qobj_incre = aa2quat(ang_obj + ang_obj_incre_array(i), -n*plan_2d{p}.dir);
+			qgrp_incre = aa2quat(ang_grp + ang_grp_incre_array(i), n);
 
-			updatePlot(gripper, Robj, Rgrp, gp10_w, gp20_w, qgrasp0_w, com_w, points_w,...
-				   h_cp, h_com, h_gravity, h_surf, h_fingertip_plus, h_fingertip_minus, ...
-				   h_finger_plus, h_finger_minus, h_palm);
+			qobj = quatMTimes(qobj_incre, qobj_now);
+			qgrp = quatMTimes(qgrp_incre, qgrp_now);
+			updatePlot(qobj, qgrp, gp1o_w, gp2o_w, gripper, mesh.COM, mesh.vertices', handles_object, handles_gripper) 
 		end
 		ang_obj = ang_obj + ang_obj_incre;
 		ang_grp = ang_grp + ang_grp_incre;
 
 	end
 
-	% update states
-	[gp10_w, gp20_w, com_w, points_w, qgrasp0_w] = updateStates(gp10_w, gp20_w, com_w, points_w, qgrasp0_w, Robj, Rgrp);
-    q_now = quatMTimes(mat2quat(Robj), q_now);
 	% --------------------------------------
 	% 	Post-Rolling
-    %   From q_now to qf
+    %   From qobj_now to qf
 	% --------------------------------------
-	num = floor(angBTquat(q_now, qf)/STEP_LENGTH_RAD);
+    qobj_now = qobj;
+    qgrp_now = qgrp;
+	num = floor(angBTquat(qobj_now, qf)/STEP_LENGTH_RAD);
 	t   = (0:(num+1))/(num+1);
-	qi  = quatSlerp(q_now, qf, t);
+	qi  = quatSlerp(qobj_now, qf, t);
 
-	h_fingertip_plus.FaceColor  = [0.9 0.1 0];
-	h_fingertip_minus.FaceColor = [0.9 0.1 0];
+	handles_gripper.fingertip_plus.FaceColor  = [0.9 0.1 0];
+	handles_gripper.fingertip_minus.FaceColor = [0.9 0.1 0];
 
 	for s = 1:length(t)
-		q0i_w = quatMTimes(qi(:,s), quatInv(q_now)); % a rotation that rotates q_now to qi(:,s), measured in world frame
-		Robj  = quat2m(q0i_w);
-		Rgrp  = Robj;
-		updatePlot(gripper, Robj, Rgrp, gp10_w, gp20_w, qgrasp0_w, com_w, points_w,...
-				   h_cp, h_com, h_gravity, h_surf, h_fingertip_plus, h_fingertip_minus, ...
-			       h_finger_plus, h_finger_minus, h_palm);
+		qobj  = qi(:,s);
+		q0i_w = quatMTimes(qi(:,s), quatInv(qobj_now)); % a rotation that rotates qobj_now to qi(:,s), measured in world frame
+		qgrp  = quatMTimes(q0i_w, qgrp_now);
+		updatePlot(qobj, qgrp, gp1o_w, gp2o_w, gripper, mesh.COM, mesh.vertices', handles_object, handles_gripper) 
 	end
 
 end % finish the whole path
@@ -200,59 +177,34 @@ end
 
 
 
-function updatePlot(gripper, Robj, Rgrp, gp1, gp2, qgp0, com, points, h_cp, h_com, h_gravity, h_surf, h_fingertip_plus, h_fingertip_minus, h_finger_plus, h_finger_minus, h_palm)
-	gp1_ = Robj*gp1;
-	gp2_ = Robj*gp2;
+function updatePlot(qobj, qgp0, gp1, gp2, gripper, com, points, handles_object, handles_gripper) 
+	Robj = quat2m(qobj);
 	com_ = Robj*com;
 	ps_  = Robj*points;
 
-	Rgrp = Rgrp*quat2m(qgp0);
     
-	fingertip_plus  = bsxfun(@plus, Rgrp*gripper.vertices{1}, gp1_);
-	fingertip_minus = bsxfun(@plus, Rgrp*gripper.vertices{2}, gp2_);
-	finger_plus     = bsxfun(@plus, Rgrp*gripper.vertices{3}, gp1_);
-	finger_minus    = bsxfun(@plus, Rgrp*gripper.vertices{4}, gp2_);
-	palm_plus       = bsxfun(@plus, Rgrp*gripper.vertices{5}, gp1_);
-	palm_minus      = bsxfun(@plus, Rgrp*gripper.vertices{6}, gp2_);
-	palm            = [palm_plus palm_minus];
-
 	[~, cpid] = min(ps_(3,:));
 	cpid      = abs(ps_(3,:) - ps_(3,cpid))<1e-5;
 	cp_       = ps_(:,cpid);
 
 	% update plot
-	% h_vertices.XData  = ps_(1,:);
-	% h_vertices.YData  = ps_(2,:);
-	% h_vertices.ZData  = ps_(3,:);
-	h_cp.XData        = cp_(1,:);
-	h_cp.YData        = cp_(2,:);
-	h_cp.ZData        = cp_(3,:);
-	h_com.XData       = com_(1);
-	h_com.YData       = com_(2);
-	h_com.ZData       = com_(3);
-	h_gravity.XData   = com_(1)+[0  0]; 
-	h_gravity.YData   = com_(2)+[0  0]; 
-	h_gravity.ZData   = com_(3)+[0 -1];
 
-	h_surf.Vertices   = ps_';
+	handles_object.cp.XData        = cp_(1,:);
+	handles_object.cp.YData        = cp_(2,:);
+	handles_object.cp.ZData        = cp_(3,:);
+	handles_object.com.XData       = com_(1);
+	handles_object.com.YData       = com_(2);
+	handles_object.com.ZData       = com_(3);
+	handles_object.gravity.XData   = com_(1)+[0  0]; 
+	handles_object.gravity.YData   = com_(2)+[0  0]; 
+	handles_object.gravity.ZData   = com_(3)+[0 -1];
 
-	h_fingertip_plus.Vertices  = fingertip_plus';
-	h_fingertip_minus.Vertices = fingertip_minus';
-	h_finger_plus.Vertices     = finger_plus';
-	h_finger_minus.Vertices    = finger_minus';
-	h_palm.Vertices            = palm';
+	handles_object.surf.Vertices   = ps_';
+
+	plotGripper([], gripper, qobj, [gp1 gp2], qgp0, handles_gripper);
 	 
 
 	axis([com_(1)-1 com_(1)+1 com_(2)-1 com_(2)+1 com_(3)-1 com_(3)+1]);
 	axis equal;
 	drawnow;
-end
-
-function [gp1o_w, gp2o_w, com, points, qg] = updateStates(gp1o_w, gp2o_w, com, points, qg, Robj, Rgrp)
-	% update states
-	gp1o_w = Robj*gp1o_w;
-	gp2o_w = Robj*gp2o_w;
-	com    = Robj*com;
-	points = Robj*points;
-	qg     = quatMTimes(mat2quat(Rgrp), qg);
 end

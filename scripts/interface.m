@@ -22,7 +22,7 @@ function varargout = interface(varargin)
 
 % Edit the above text to modify the response to help interface
 
-% Last Modified by GUIDE v2.5 30-Aug-2017 11:00:06
+% Last Modified by GUIDE v2.5 05-Sep-2017 23:11:01
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -167,13 +167,22 @@ set(handles.BTN_rand_final, 'Enable', 'on');
 
 function BTN_plan_Callback(hObject, eventdata, handles)
 clc;
-global para fgraph pgraph mesh gripper grasps q0 qf % inputs
+global para fgraph pgraph mesh gripper grasps q0 qf qg0 qgf% inputs
 global path_found path_q path_graspid path_qp plan_2d % outputs
+global grasp_id_0 grasp_id_f
 
 disp('[Planning] Planning begin.');
-% get grasp points for initial and final pose
-grasp_id_0 = checkGraspPoints(grasps, mesh, pgraph, q0, para.showGraspChecking_id(1), para);
-grasp_id_f = checkGraspPoints(grasps, mesh, pgraph, qf, para.showGraspChecking_id(2), para);
+
+% get grasp points/grasp angles for initial and final pose
+if get(handles.CB_auto_grasp0, 'Value')
+	grasp_id_0 = checkGraspPoints(grasps, mesh, pgraph, q0, para.showGraspChecking_id(1), para);
+	qg0 = [];
+end
+
+if get(handles.CB_auto_graspf, 'Value')
+	grasp_id_f = checkGraspPoints(grasps, mesh, pgraph, qf, para.showGraspChecking_id(2), para);
+	qgf = [];
+end
 
 % treat initial/final pose as additional mode
 % build the full graph
@@ -230,19 +239,26 @@ while true
 	% motion planning for each edge on the path
 	path_q(:,1) = q0;
 	for p = 1:NP-1
+		if p == 1
+			qg0_p = qg0;
+		else
+			qg0_p = [];
+		end
+
 		if p == NP-1
+			qgf_p         = qgf;
 			path_q(:,p+1) = qf;
 		else
+			qgf_p         = [];
 			path_q(:,p+1) = fgraph.quat(:, mode_id_path(p+1));
 		end
-			
-		id_common = find(mode_grasps(mode_id_path(p),:) == mode_grasps(mode_id_path(p+1),:));	
-		assert(~isempty(id_common));
+		id_common = find(mode_grasps(mode_id_path(p),:) & mode_grasps(mode_id_path(p+1),:)); 
+		assert(~isempty(id_common)); % if failed, the graph search has problem
 		disp(['  Edge #' num2str(p) ', common grasps: ' num2str(length(id_common))]);
 		for i = 1:length(id_common)
 			path_graspid(p) = id_common(i);
 
-			[plan_2d_temp, qp_temp, flag] = planOneGrasp(mesh, grasps, id_common(i), path_q(:,p), path_q(:,p+1), pgraph, para);
+			[plan_2d_temp, qp_temp, flag] = planOneGrasp(mesh, grasps, id_common(i), path_q(:,p), path_q(:,p+1), qg0_p, qgf_p, pgraph, para);
 
 		    if flag <= 0
                 switch flag
@@ -336,4 +352,214 @@ function LB_files_CreateFcn(hObject, eventdata, handles)
 %       See ISPC and COMPUTER.
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in BTN_rand_grasp0.
+function BTN_rand_grasp0_Callback(hObject, eventdata, handles)
+global q0 qg0 grasp_id_0
+global grasps gripper mesh pgraph para
+% hObject    handle to BTN_rand_grasp0 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% check all grasps for current pose
+all_grasps = checkGraspPoints(grasps, mesh, pgraph, q0, para.showGraspChecking_id(2), para);
+ids        = find(all_grasps);
+for i = 1:length(ids)
+	gp1o_w   = grasps.points(:, ids(i), 1);
+	gp2o_w   = grasps.points(:, ids(i), 2);
+	gp10_w   = quatOnVec(gp1o_w, q0);
+	gp20_w   = quatOnVec(gp2o_w, q0);
+	qg0      = getProperGrasp(gp10_w, gp20_w, grasps.range(:, ids(i)), q0, gp1o_w, gp2o_w, para); % grasp frame for q0, under world coordinate
+	if(angBTVec([0 0 1]', quatOnVec([0 0 1]', qg0)) > para.GRIPPER_TILT_LIMIT)
+		all_grasps(ids(i)) = false;
+	end
+end	
+
+% pick one
+ids                 = find(all_grasps);
+if isempty(ids)
+	disp('No feasible grasps for this pose !!');
+	return;
+end
+id                  = randi(length(ids));
+grasp_id_0          = zeros(size(all_grasps));
+grasp_id_0(ids(id)) = 1;
+
+% re-draw the object and gripper
+grasp_id = find(grasp_id_0);
+gp1o_w   = grasps.points(:, grasp_id, 1);
+gp2o_w   = grasps.points(:, grasp_id, 2);
+gp10_w   = quatOnVec(gp1o_w, q0);
+gp20_w   = quatOnVec(gp2o_w, q0);
+qg0      = getProperGrasp(gp10_w, gp20_w, grasps.range(:, grasp_id), q0, gp1o_w, gp2o_w, para); % grasp frame for q0, under world coordinate
+
+plotObject(mesh, handles.AX_initial, q0);
+plotGripper(handles.AX_initial, gripper, q0, [gp1o_w gp2o_w], qg0);
+rotate3d on;
+
+
+% --- Executes on button press in BTN_rand_graspf.
+function BTN_rand_graspf_Callback(hObject, eventdata, handles)
+global qf qgf grasp_id_f
+global grasps gripper mesh pgraph para
+% hObject    handle to BTN_rand_grasp0 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% check all grasps for current pose
+all_grasps = checkGraspPoints(grasps, mesh, pgraph, qf, para.showGraspChecking_id(2), para);
+ids        = find(all_grasps);
+for i = 1:length(ids)
+	gp1o_w   = grasps.points(:, ids(i), 1);
+	gp2o_w   = grasps.points(:, ids(i), 2);
+	gp10_w   = quatOnVec(gp1o_w, qf);
+	gp20_w   = quatOnVec(gp2o_w, qf);
+	qgf      = getProperGrasp(gp10_w, gp20_w, grasps.range(:, ids(i)), qf, gp1o_w, gp2o_w, para); % grasp frame for qf, under world coordinate
+	if(angBTVec([0 0 1]', quatOnVec([0 0 1]', qgf)) > para.GRIPPER_TILT_LIMIT)
+		all_grasps(ids(i)) = false;
+	end
+end	
+
+% pick one
+ids                 = find(all_grasps);
+if isempty(ids)
+	disp('No feasible grasps for this pose !!');
+	return;
+end
+
+id                  = randi(length(ids));
+grasp_id_f          = zeros(size(all_grasps));
+grasp_id_f(ids(id)) = 1;
+
+% re-draw the object and gripper
+grasp_id = find(grasp_id_f);
+gp1o_w   = grasps.points(:, grasp_id, 1);
+gp2o_w   = grasps.points(:, grasp_id, 2);
+gp1f_w   = quatOnVec(gp1o_w, qf);
+gp2f_w   = quatOnVec(gp2o_w, qf);
+qgf      = getProperGrasp(gp1f_w, gp2f_w, grasps.range(:, grasp_id), qf, gp1o_w, gp2o_w, para); % grasp frame for qf, under world coordinate
+
+plotObject(mesh, handles.AX_final, qf);
+plotGripper(handles.AX_final, gripper, qf, [gp1o_w gp2o_w], qgf);
+rotate3d on;
+
+% --- Executes on button press in CB_auto_grasp0.
+function CB_auto_grasp0_Callback(hObject, eventdata, handles)
+% hObject    handle to CB_auto_grasp0 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global q0 qg0
+global mesh grasps pgraph gripper grasp_id_0 para
+% Hint: get(hObject,'Value') returns toggle state of CB_auto_grasp0
+if get(handles.CB_auto_grasp0, 'Value')
+	set(handles.BTN_rand_grasp0, 'Enable', 'off');
+	set(handles.Slider_grasp0, 'Enable', 'off');
+	% re-plot just the object 
+	plotObject(mesh, handles.AX_initial);
+	rotate3d on;
+else
+	set(handles.BTN_rand_grasp0, 'Enable', 'on');
+	set(handles.Slider_grasp0, 'Enable', 'on');
+	% re-plot the object and gripper 
+    % pick a grasp
+    all_grasps          = checkGraspPoints(grasps, mesh, pgraph, q0, para.showGraspChecking_id(2), para);
+    ids                 = find(all_grasps);
+    id                  = randi(length(ids));
+    grasp_id_0          = zeros(size(all_grasps));
+    grasp_id_0(ids(id)) = 1;
+	assert(sum(grasp_id_0) == 1);
+	grasp_id = find(grasp_id_0);
+	gp1o_w   = grasps.points(:, grasp_id, 1);
+	gp2o_w   = grasps.points(:, grasp_id, 2);
+	gp10_w   = quatOnVec(gp1o_w, q0);
+	gp20_w   = quatOnVec(gp2o_w, q0);
+	qg0      = getProperGrasp(gp10_w, gp20_w, grasps.range(:, grasp_id), q0, gp1o_w, gp2o_w, para); % grasp frame for q0, under world coordinate
+	
+	plotObject(mesh, handles.AX_initial, q0);
+	plotGripper(handles.AX_initial, gripper, q0, [gp1o_w gp2o_w], qg0);
+	rotate3d on;
+end
+
+% --- Executes on button press in CB_auto_graspf.
+function CB_auto_graspf_Callback(hObject, eventdata, handles)
+% hObject    handle to CB_auto_graspf (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global qf qgf
+global mesh grasps gripper pgraph grasp_id_f para
+% Hint: get(hObject,'Value') returns toggle state of CB_auto_grasp0
+if get(handles.CB_auto_graspf, 'Value')
+	set(handles.BTN_rand_graspf, 'Enable', 'off');
+	set(handles.Slider_graspf, 'Enable', 'off');
+	% re-plot just the object 
+	plotObject(mesh, handles.AX_final);
+	rotate3d on;
+else
+	set(handles.BTN_rand_graspf, 'Enable', 'on');
+	set(handles.Slider_graspf, 'Enable', 'on');
+	% re-plot the object and gripper 
+	
+    % pick a grasp
+    all_grasps          = checkGraspPoints(grasps, mesh, pgraph, qf, para.showGraspChecking_id(2), para);
+    ids                 = find(all_grasps);
+    id                  = randi(length(ids));
+    grasp_id_f          = zeros(size(all_grasps));
+    grasp_id_f(ids(id)) = 1;
+    
+	assert(sum(grasp_id_f) == 1);
+	grasp_id = find(grasp_id_f);
+	gp1o_w   = grasps.points(:, grasp_id, 1);
+	gp2o_w   = grasps.points(:, grasp_id, 2);
+	gp1f_w   = quatOnVec(gp1o_w, qf);
+	gp2f_w   = quatOnVec(gp2o_w, qf);
+	qgf      = getProperGrasp(gp1f_w, gp2f_w, grasps.range(:, grasp_id), qf, gp1o_w, gp2o_w, para); % grasp frame for q0, under world coordinate
+
+	plotObject(mesh, handles.AX_final, qf);
+	plotGripper(handles.AX_final, gripper, qf, [gp1o_w gp2o_w], qgf);
+	rotate3d on;
+end
+
+% --- Executes on slider movement.
+function Slider_grasp0_Callback(hObject, eventdata, handles)
+% hObject    handle to Slider_grasp0 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'Value') returns position of slider
+%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
+
+
+% --- Executes during object creation, after setting all properties.
+function Slider_grasp0_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to Slider_grasp0 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: slider controls usually have a light gray background.
+if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor',[.9 .9 .9]);
+end
+
+
+% --- Executes on slider movement.
+function Slider_graspf_Callback(hObject, eventdata, handles)
+% hObject    handle to Slider_graspf (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'Value') returns position of slider
+%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
+
+
+% --- Executes during object creation, after setting all properties.
+function Slider_graspf_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to Slider_graspf (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: slider controls usually have a light gray background.
+if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor',[.9 .9 .9]);
 end

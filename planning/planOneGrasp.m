@@ -1,20 +1,34 @@
-function [plan_2d, qp, flag] = planOneGrasp(mesh, grasps, grasp_id, q0, qf, pgraph, para )
+% do planning given:
+% 	grasp_id: a specific grasp pos
+% 	q0, qf: initial/final object pose
+% 	qg0, qgf: initial/final grasp pose (could be empty)
+function [plan_2d, qp, flag] = planOneGrasp(mesh, grasps, grasp_id, q0, qf, qg0, qgf, pgraph, para )
 
 % -----------------------------------------
 % 	Get the grasps
 % -----------------------------------------
 
 % under world coordinate, calculate the grasp pos for object in q0, qf
-gp1o_w    = grasps.points(:, grasp_id, 1);
-gp2o_w    = grasps.points(:, grasp_id, 2);
+gp1o_w = grasps.points(:, grasp_id, 1);
+gp2o_w = grasps.points(:, grasp_id, 2);
 
-gp10_w    = quatOnVec(gp1o_w, q0);
-gp20_w    = quatOnVec(gp2o_w, q0);
-[qgrasp0_w, qgrasp0frame_w] = getProperGrasp(gp10_w, gp20_w, grasps.range(:, grasp_id), q0, gp1o_w, gp2o_w, para); % grasp frame for q0, under world coordinate
+gp10_w = quatOnVec(gp1o_w, q0);
+gp20_w = quatOnVec(gp2o_w, q0);
+if isempty(qg0)
+	[qgrasp0_w, qgrasp0frame_w] = getProperGrasp(gp10_w, gp20_w, grasps.range(:, grasp_id), q0, gp1o_w, gp2o_w, para); % grasp frame for q0, under world coordinate
+else
+	[~, qgrasp0frame_w] = getProperGrasp(gp10_w, gp20_w, grasps.range(:, grasp_id), q0, gp1o_w, gp2o_w, para); % grasp frame for q0, under world coordinate
+	qgrasp0_w           = qg0;
+end
 
-gp1f_w    = quatOnVec(gp1o_w, qf);
-gp2f_w    = quatOnVec(gp2o_w, qf);
-[qgraspf_w, qgraspfframe_w] = getProperGrasp(gp1f_w, gp2f_w, grasps.range(:, grasp_id), qf, gp1o_w, gp2o_w, para); % grasp frame for qf, under world coordinate
+gp1f_w = quatOnVec(gp1o_w, qf);
+gp2f_w = quatOnVec(gp2o_w, qf);
+if isempty(qgf)
+	[qgraspf_w, qgraspfframe_w] = getProperGrasp(gp1f_w, gp2f_w, grasps.range(:, grasp_id), qf, gp1o_w, gp2o_w, para); % grasp frame for qf, under world coordinate
+else
+	[~, qgraspfframe_w] = getProperGrasp(gp1f_w, gp2f_w, grasps.range(:, grasp_id), qf, gp1o_w, gp2o_w, para); % grasp frame for qf, under world coordinate
+	qgraspf_w           = qgf;
+end
 
 % check grasp frame
 temp  = gp10_w - gp20_w;
