@@ -136,9 +136,9 @@ grasps.ref_frame = grasp_frame; % describes where is the 0 in grasps.range
 
 % --------------------------------------------
 % 		Calculate feasible grasps 
-% 		for each node
+% 		for each stable placement
 % --------------------------------------------
-disp('[CalGrasp] Computing feasible grasps for each mode:');
+disp('[CalGrasp] Computing feasible grasps for each stable placement:');
 m_grasps = ones(fgraph.NM, NGS);
 for i = 1:fgraph.NM
 	if para.showStablePoses
