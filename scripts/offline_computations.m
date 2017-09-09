@@ -64,6 +64,7 @@ for i = 1:length(file_dir)
 	disp(['Processing # ' num2str(i) ' of ' num2str(length(file_dir)) ', name: ' filename]);
 	disp(['err_bound was ' num2str(pgraph.err_bound)]);
 	[~, pgraph_amended, ~, ~] = getObject(para, filename);
-% 	pgraph.err_bound          = pgraph_amended.err_bound;
-% 	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps');
+    drawnow
+	pgraph.err_bound          = pgraph_amended.err_bound;
+	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps');
 end
