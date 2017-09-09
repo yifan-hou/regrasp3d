@@ -35,7 +35,7 @@ if ~any(grasp_id_f)
 	return;
 end
 
-mode_grasps = [fgraph.grasps; grasp_id_0; grasp_id_f];
+mode_grasps  = [fgraph.grasps; grasp_id_0; grasp_id_f];
 path_counter = 1;
 while true
 	[~, mode_id_path] = dijkstra(adj_matrix, ones(fgraph.NM+2), fgraph.NM+1, fgraph.NM+2);

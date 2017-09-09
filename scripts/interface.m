@@ -120,7 +120,7 @@ para.showGraspChecking    = false;
 para.showGraspChecking_id = [2 3];
 para.showProblem          = false;
 para.showProblem_id       = [1 2 3];
-para.show2Dproblem        = false;
+para.show2Dproblem        = true;
 para.show2Dproblem_id     = 4;
 
 % get object mesh

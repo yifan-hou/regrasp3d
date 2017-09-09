@@ -21,11 +21,9 @@ para.ANGLE_TOL             = 30*pi/180; % rad  % grasp axis tolerance
 para.COM_DIST_LIMIT        = 0.8; % meter
 para.POINTJ_SAMPLE_DENSITY = 100; % # of points per m^2
 
-
 % convex hull simplification parameters
 para.NF_CVR = 80; % target number of faces on the simplified convex hull
-para.err_tol_CVR = 0.05;
-
+para.err_tol_CVR = 0.02;
 
 % planning parameter
 para.PIVOTABLE_CHECK_GRANULARITY = 1*pi/180; % 1 sample every 1 degree
@@ -45,27 +43,27 @@ para.showProblem            = false;
 para.showProblem_id         = [1 2 3];
 
 
-% get object mesh
-file_dir = dir('../model/data/*.stl');
-for i = 1:length(file_dir)
-	filename = file_dir(i).name;	
-	disp(['Processing # ' num2str(i) ' of ' num2str(length(file_dir)) ', name: ' filename]);
-	[fgraph, pgraph, mesh, mesh_s] = getObject(para, filename);
-	gripper                        = getGripper();
-	[grasps, fgraph]               = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para);
-	full_path = ['../model/data/' filename(1:end-4) '.mat'];
-	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps');
-end
-
-% % modify error bound
+% % get object mesh
 % file_dir = dir('../model/data/*.stl');
 % for i = 1:length(file_dir)
-% 	filename  = file_dir(i).name;	
-% 	full_path = ['../model/data/' filename(1:end-4) '.mat'];
-% 	load(full_path);
+% 	filename = file_dir(i).name;	
 % 	disp(['Processing # ' num2str(i) ' of ' num2str(length(file_dir)) ', name: ' filename]);
-% 	disp(['err_bound was ' num2str(pgraph.err_bound)]);
-% 	[~, pgraph_amended, ~, ~] = getObject(para, filename);
-% % 	pgraph.err_bound          = pgraph_amended.err_bound;
-% % 	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps');
+% 	[fgraph, pgraph, mesh, mesh_s] = getObject(para, filename);
+% 	gripper                        = getGripper();
+% 	[grasps, fgraph]               = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para);
+% 	full_path = ['../model/data/' filename(1:end-4) '.mat'];
+% 	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps');
 % end
+
+% modify error bound
+file_dir = dir('../model/data/*.stl');
+for i = 1:length(file_dir)
+	filename  = file_dir(i).name;	
+	full_path = ['../model/data/' filename(1:end-4) '.mat'];
+	load(full_path);
+	disp(['Processing # ' num2str(i) ' of ' num2str(length(file_dir)) ', name: ' filename]);
+	disp(['err_bound was ' num2str(pgraph.err_bound)]);
+	[~, pgraph_amended, ~, ~] = getObject(para, filename);
+% 	pgraph.err_bound          = pgraph_amended.err_bound;
+% 	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps');
+end

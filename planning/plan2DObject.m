@@ -12,7 +12,7 @@
 %       -1: required rolling exceeds gripper tilt limit
 %       -3: initial grasp pos violates gripper tilt limit 
 %       -4: initial grasp pos violates gripper Z limit 
-function	[plan, init_gripper_ang, flag] = plan2DObject(g, init, goal, com, gp, Rw_2d, ps, ps_err, cmat, cf_range, cf_init_id, gripper_cone_width, para)
+function	[plan, init_gripper_ang, flag] = plan2DObject(g, init, goal, com, gp, Rw_2d, ps, ps_err, cf_range, cf_init_id, gripper_cone_width, para)
 % rotate so that gy points down
 R    = matBTVec([g(1:2); 0], [0 -1 0]');
 g    = R*g; % should be [0 -1 ?]
@@ -21,8 +21,8 @@ gp   = R*gp;
 com  = R*com;
 goal = R*goal;  % goal(3) should = 0
 init = R*init;  % init(3) should = 0
-assert(abs(init(3))<1e-3);
-assert(abs(goal(3))<1e-3);
+assert(abs(init(3)) < 1e-3);
+assert(abs(goal(3)) < 1e-3);
 
 
 % check initial grasp orientation
@@ -40,7 +40,6 @@ if init(2) < cos(gripper_cone_width)
 	return;
 end
 
-
 init_gripper_ang = angBTVec([0 1 0]', init, [0 0 1]');
 cf_zero_id       = cf_init_id - round(180/pi*init_gripper_ang);
 
@@ -50,7 +49,6 @@ gripper_cone_left  = [-sin(gripper_cone_width), cos(gripper_cone_width), 0]';
 % find contact point
 [~, cp_id] = max(g'*ps); % id of contact point in points list
 cp         = ps(:,cp_id);
-
 
 % check initial grasp height
 if ((cp-gp(:,1))'*g < para.GRIPPER_Z_LIMIT) || ((cp-gp(:,2))'*g < para.GRIPPER_Z_LIMIT)
@@ -91,8 +89,8 @@ for d = 1:2
         figure(para.show2Dproblem_id); clf; hold on;
         h_gravity   = plot(com(1)+[0 g(1)], com(2)+[0 g(2)], '-r', 'linewidth', 2);
         h_com       = plot(com(1), com(2), '.r', 'markersize', 30);
-        h_cp        = plot(cp(1), cp(2), '.k', 'markersize', 35);
-        h_ps        = plot(ps(1,:), ps(2,:), '.k', 'markersize', 20);
+        h_cp        = plot(cp(1), cp(2), '.k', 'markersize', 20);
+        h_ps        = plot(ps(1,:), ps(2,:), '.b', 'markersize', 10);
         h_goal      = plot([0 goal(1)], [0 goal(2)], '-g*', 'markersize',1, 'linewidth', 2);
         h_fingertip = plot(0, 0, '.g', 'markersize',30);
         
@@ -120,75 +118,54 @@ for d = 1:2
     end
     
     % initialization
-    s_cp     = cp; % current id
-    s_cpid   = cp_id;
     s_ps     = ps;
     s_com    = com;
     s_goal   = goal;
     s_angle  = 0;
-    motion   = [];
-    rtype    = [];
-    % begin rolling
-    while true
-        % get next contact
-        adj_p_id = find(cmat(s_cpid, :));
-        
-        contact_vecs = s_ps(:, adj_p_id) - s_ps(:, s_cpid);
-        if abs(g(3))<1e-5
-            % gravity points down
-            % could have 2 points overlapping
-            id_same = find(normByCol(contact_vecs(1:2,:)) < 1e-5);
-            assert(length(id_same)<=1);
-            if ~isempty(id_same)
-                cpid2        = adj_p_id(id_same);
-                tempid       = cmat(s_cpid,:); tempid(cpid2) = 0;
-                tempid2      = cmat(cpid2,:); tempid2(s_cpid) = 0;
-                adj_p_id     = [find(tempid) find(tempid2)];
-                contact_vecs = [s_ps(:, tempid) - s_ps(:, s_cpid), s_ps(:, tempid2) - s_ps(:, cpid2)];
-            end
-        end
-        
-        % we can rotate forward.
-        % check how much do we need to rotate...can we reach the goal?
-        contact_vecs_angles = zeros(1, size(contact_vecs,2));
-        axis_w = -Rw_2d'*[0; 0; 1]*s_dir(1);
-        for v = 1:size(contact_vecs,2)
-            temp_ang = rot2plane(Rw_2d'*contact_vecs(:,v), axis_w, Rw_2d'*s_dir);
-            if isempty(temp_ang)
-                contact_vecs_angles(v) = NaN;
-            else
-                contact_vecs_angles(v) = temp_ang(1);
-            end
-        end
-        [ang2next, id] = min(contact_vecs_angles);
-        
-        ang2goal_remaining = ang2goal - s_angle;
-        
-        flag_finish_now = 0;
-        if ang2goal_remaining < ang2next
-            ang2next        = ang2goal_remaining;
+
+    ang2next        = para.PIVOTABLE_CHECK_GRANULARITY;
+    flag_finish_now = 0;
+
+    Nframes = floor(ang2goal/para.PIVOTABLE_CHECK_GRANULARITY)+1;
+    motion  = zeros(1, Nframes);
+    rtype   = zeros(1, Nframes);
+
+    axisz   = -z*s_dir(1);
+    R1      = aa2mat(para.PIVOTABLE_CHECK_GRANULARITY, axisz);
+
+    % begin rotation
+    for fr = 1:Nframes
+        % check how much do we need to rotate... can we reach the goal?
+        if ang2goal < s_angle + para.PIVOTABLE_CHECK_GRANULARITY
+            assert(fr == Nframes);
+            ang2next        = ang2goal - s_angle;
+            Ri              = aa2mat(ang2next, axisz);
             flag_finish_now = 1;
+        else
+            Ri = R1;
         end
         
-        % can we do this rotation?
-        [s_motion, s_rtype] = calRotation(s_com, s_cp, ang2next, -z*s_dir(1), gp, g, ps_err, para);
-        if s_rtype(1) == -1
-            % no we can't
+        % find out new contact points
+        s_ps_w              = Rw_2d'*s_ps;
+        [psz_min, z_min_id] = min(s_ps_w(3, :));
+        s_cpid              = s_ps_w(3, :) - psz_min < 2*ps_err;
+        s_cp                = s_ps(:, s_cpid);
+
+        % check current rotation state
+        rtype(fr)  = checkPivotability(s_com, s_ps(:, z_min_id), min(s_cp(1,:)), max(s_cp(1,:)), gp, g, ps_err, para);
+        motion(fr) = ang2next;
+        if rtype(fr) == -1
+            % constraint violated
             s_dir = - s_dir;
             flag  = -1; % flag could be re-written later, if success
             break; % stop current rolling, try the other direction
         end
-        motion = [motion s_motion];
-        rtype  = [rtype s_rtype];
-        
-        % yes we can
-        % so do the rotation
-        R_i     = aa2mat(ang2next, -z*s_dir(1));
-        s_com   = R_i*s_com;
-        s_goal  = R_i*s_goal;
-        s_ps    = R_i*s_ps;
+
+        % do the rotation
+        s_com   = Ri*s_com;
+        s_goal  = Ri*s_goal;
+        s_ps    = Ri*s_ps;
         s_angle = s_angle + ang2next;
-        s_cp    = s_ps(:, s_cpid); % old contact points
         
         if para.show2Dproblem
             figure(para.show2Dproblem_id); hold on;
@@ -202,7 +179,7 @@ for d = 1:2
             h_ps.YData      = s_ps(2,:);
             h_goal.XData    = [0 s_goal(1)];
             h_goal.YData    = [0 s_goal(2)];
-            if s_rtype(end) == 1
+            if rtype(end) == 1
                 h_fingertip.Color = [0 1 0];
             else
                 h_fingertip.Color = [0.5 0.5 0];
@@ -210,9 +187,6 @@ for d = 1:2
             axis equal
             drawnow
         end
-        
-        s_cpid  = adj_p_id(id); % new contact point
-        s_cp    = s_ps(:, s_cpid);
         
         if flag_finish_now
             % further check the whole trajectory, determine feasibility
@@ -249,66 +223,70 @@ else
     if feasible_dir > 0
         final_goal_ang = init_goal_ang - sum(motion);
     else
-        final_goal_ang = init_goal_ang + sum(motion)
+        final_goal_ang = init_goal_ang + sum(motion);
     end
     disp(['final_goal_ang: ' num2str(180/pi*final_goal_ang)]);
-
 end
 
 end
 
-% -1: infeasible
-%  0: can do roll
-%  1: can do pivot
-function pivotable = checkPivotability(com, cp, gp, g, ps_err, para)
+% Inputs
+%   cp_l, cp_r: range of possible contact points
+% Outputs
+%   pivotable
+%     1: can do pivot
+%     0: can do roll
+%    -1: infeasible
+function pivotable = checkPivotability(com, cp, cp_l, cp_r, gp, g, ps_err, para)
 	% 0: only roll
     pivotable = 0;
     % 1: can pivot
-	if ((cp(1)-ps_err)*com(1) > 0) && ((cp(1)+ps_err)*com(1) > 0)
+	if (cp_l*com(1) > 0) && (cp_r*com(1) > 0)
 		pivotable = 1;
 	end
     % -1: gripper limit violated
-	if ((cp-gp(:,1))'*g < para.GRIPPER_Z_LIMIT)||((cp-gp(:,2))'*g < para.GRIPPER_Z_LIMIT)
+	if ((cp-gp(:,1))'*g < para.GRIPPER_Z_LIMIT + ps_err)||((cp-gp(:,2))'*g < para.GRIPPER_Z_LIMIT + ps_err)
 		pivotable = -1;
 	end
 
 end
 
-% z: rotation axis of object
-function [motion, rtype] = calRotation(com, cp, ang, z, gp, g, ps_err, para)
-	N = floor(ang/para.PIVOTABLE_CHECK_GRANULARITY);
-	pivotable = zeros(1, N+1);
-	for i = 0:N
-		ang_i = i*para.PIVOTABLE_CHECK_GRANULARITY;
-		com_i = aaOnVec(com, ang_i, z);
-		cp_i  = aaOnVec(cp, ang_i, z);
-		pivotable(i+1) = checkPivotability(com_i, cp_i, gp, g, ps_err, para);
-	end
-
-	if any(pivotable < 0)
-		% infeasible
-		rtype = -1;
-		motion = 0;
-		return;
-	end
-
-	change = find(pivotable(1:end-1) ~= pivotable(2:end));
-	motion = zeros(1, length(change)+1);
-	rtype  = zeros(1, length(change)+1);
-    if isempty(change)
-        motion = ang;
-        rtype = pivotable(1);
-    else
-        motion(1) = change(1)*para.PIVOTABLE_CHECK_GRANULARITY;
-        rtype(1)  = pivotable(change(1));
-        for i = 2:length(change)
-            motion(i) = (change(i) - change(i-1))*para.PIVOTABLE_CHECK_GRANULARITY;
-            rtype(i)  = pivotable(change(i));
-        end        
-        motion(end) = ang - change(end)*para.PIVOTABLE_CHECK_GRANULARITY;
-        rtype(end) = pivotable(end);
-    end
-end
+% % z: rotation axis of object
+% function [motion, rtype] = calRotation(com, cp, ang, z, gp, g, ps_err, para)
+% 	N = floor(ang/para.PIVOTABLE_CHECK_GRANULARITY);
+% 	pivotable = zeros(1, N+1);
+% 	for i = 0:N
+% 		ang_i = i*para.PIVOTABLE_CHECK_GRANULARITY;
+% 		com_i = aaOnVec(com, ang_i, z);
+% 		cp_i  = aaOnVec(cp, ang_i, z);
+% 		pivotable(i+1) = checkPivotability(com_i, cp_i, gp, g, ps_err, para);
+% 	end
+%     % pivotable 
+%     %   1: pivotable, 2: only rolling 3: infeasible
+% 	if any(pivotable < 0)
+% 		% infeasible
+% 		rtype = -1;
+% 		motion = 0;
+% 		return;
+% 	end
+% 
+% 	change = find(pivotable(1:end-1) ~= pivotable(2:end));
+% 	motion = zeros(1, length(change)+1);
+% 	rtype  = zeros(1, length(change)+1);
+%     if isempty(change)
+%         motion = ang;
+%         rtype = pivotable(1);
+%     else
+%         motion(1) = change(1)*para.PIVOTABLE_CHECK_GRANULARITY;
+%         rtype(1)  = pivotable(change(1));
+%         for i = 2:length(change)
+%             motion(i) = (change(i) - change(i-1))*para.PIVOTABLE_CHECK_GRANULARITY;
+%             rtype(i)  = pivotable(change(i));
+%         end        
+%         motion(end) = ang - change(end)*para.PIVOTABLE_CHECK_GRANULARITY;
+%         rtype(end) = pivotable(end);
+%     end
+% end
 
 
 % function samples = sampleFixStep(a, b, step)
