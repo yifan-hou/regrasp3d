@@ -6,18 +6,17 @@ function [grasps, fgraph] = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para
 % MU         = para.MU;
 % GS_DENSITY = para.GS_DENSITY;
 ANGLE_TOL = para.ANGLE_TOL;
-NGS       = para.NGS;
-% cone = atan(MU);
 
 % --------------------------------------------
 % 		sample grasp positions
 % --------------------------------------------
 disp('[CalGrasp] Sampling Grasp Positions.');
-grasp_points         = zeros(3,   NGS,  2);
-grasp_feasible_range = zeros(360, NGS);
-grasp_frame          = zeros(4,   NGS);
+grasp_points         = zeros(3,   para.NGS,  2);
+grasp_feasible_range = zeros(360, para.NGS);
+grasp_frame          = zeros(4,   para.NGS);
 area_bin             = mesh.area/sum(mesh.area);
 grasps_count         = 1;
+resample_count       = 0;
 
 tic;
 cctime = 0;
@@ -31,7 +30,17 @@ while true
 	p1(:,3)             = mesh.vertices(mesh.faces(id_sampled, 3), :)';
 	grasp_points_face_i = sampleTriUniform(p1(:,1), p1(:,2),p1(:,3), 1);
 
-	% 2. check if this point belongs to a good grasp
+	% 2. check the distance between old points
+	similar_grasp_i = false;
+	if grasps_count > 1
+		dist1 = [normByCol(bsxfun(@minus, grasp_points(:, 1:grasps_count, 1), grasp_points_face_i)) ...
+				 normByCol(bsxfun(@minus, grasp_points(:, 1:grasps_count, 2), grasp_points_face_i))];
+		if any(dist1 < para.GRASP_DIST_LIMIT)
+			similar_grasp_i = true;
+		end
+	end
+
+	% 3. check if this point belongs to a good grasp
 	n1 = cross(p1(:,1) - p1(:,2), p1(:,3) - p1(:,2));
 	n1 = n1/norm(n1);
 	p2 = zeros(3);
@@ -43,11 +52,6 @@ while true
 		p2(:,2) = mesh.vertices(mesh.faces(j, 2), :)';
 		p2(:,3) = mesh.vertices(mesh.faces(j, 3), :)';
 		n2      = cross(p2(:,1) - p2(:,2), p2(:,3) - p2(:,2));
-		% area2   = norm(n2)/2;
-		% % check area
-		% if area2 < 1e-7
-		% 	continue;
-		% end
 		% check normal
 		n2 = n2/norm(n2);
 		if acos(abs(n1'*n2)) > ANGLE_TOL
@@ -77,11 +81,6 @@ while true
 			continue;
 		end
 
-		% [grasp_points_face_j, in] = projectOntoTri(p2(:,1),p2(:,2),p2(:,3), grasp_points_face_i);
-		% if ~in
-		% 	continue;
-		% end
-
 		% projection is good, check distance to COM
 		a        = norm(mesh.COM - grasp_points_face_i);
 		b        = norm(mesh.COM - grasp_points_face_j);
@@ -89,7 +88,7 @@ while true
 		p        = (a+b+c)/2;
 		area     = sqrt(p*(p-a)*(p-b)*(p-c));
 		dist2COM = area*2/c;
-		if dist2COM > para.COM_DIST_LIMIT
+		if dist2COM < para.COM_DIST_LIMIT
 			continue;
 		end
 
@@ -101,32 +100,56 @@ while true
 			continue;
 		end
 
+		% collision checking is good, check the distance between previous grasps
+		similar_grasp_j = false;
+		if similar_grasp_i
+			dist2 = [normByCol(bsxfun(@minus, grasp_points(:, 1:grasps_count, 1), grasp_points_face_j)) ...
+					 normByCol(bsxfun(@minus, grasp_points(:, 1:grasps_count, 2), grasp_points_face_j))];
+			if any(dist2 < para.GRASP_DIST_LIMIT)
+				similar_grasp_j = true;
+				resample_count  = resample_count + 1;
+				if resample_count > para.N_RESAMPLE
+					break;
+				else
+					continue;
+				end
+			else
+				resample_count = 0;
+			end
+		else
+			resample_count = 0;
+		end
+
 		grasp_points(:, grasps_count, 1)      = grasp_points_face_i;
 		grasp_points(:, grasps_count, 2)      = grasp_points_face_j;
 		grasp_feasible_range(:, grasps_count) = grasp_feasible_range_pp;
 		grasp_frame(:, grasps_count)          = grasp_frame_pp;
-		fprintf(' - 	Grasp %-4d of %-4d\r', grasps_count, NGS);
+		fprintf(' - 	Grasp %-4d of %-4d\r', grasps_count, para.NGS);
 		grasps_count = grasps_count + 1;
 	end
 
-	if grasps_count > NGS 
+	if grasps_count > para.NGS 
 		break;
 	end
+
+	if resample_count > para.N_RESAMPLE
+		break;
+	end	
 end
+
 sgtime = toc;
 disp(['[CalGrasp] Grasp Sampling time:' num2str(sgtime)]);
 disp(['[CalGrasp] Collision Checking time:' num2str(cctime)]);
 
-disp(['[CalGrasp] Number of candidate grasps: ' num2str(grasps_count-1)]);
+disp(['[CalGrasp] Number of grasps found: ' num2str(grasps_count-1)]);
 
+NGS = grasps_count - 1;
 % calculate quaternions for each grasp
 grasp_quats = zeros(4, NGS);
 for i = 1:NGS
 	v                = grasp_points(:,i,1) - grasp_points(:,i,2);
 	grasp_quats(:,i) = quatBTVec(v,[1 0 0]');
 end
-
-
 
 grasps.count     = NGS;
 grasps.points    = grasp_points;
