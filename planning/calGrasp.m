@@ -18,6 +18,9 @@ area_bin             = mesh.area/sum(mesh.area);
 grasps_count         = 1;
 resample_count       = 0;
 
+plotObject(mesh, 1); hold on;
+
+
 tic;
 cctime = 0;
 while true
@@ -129,12 +132,21 @@ while true
             resample_count = 0;
         end
 
+
 		grasp_points(:, grasps_count, 1)      = grasp_points_face_i;
 		grasp_points(:, grasps_count, 2)      = grasp_points_face_j;
 		grasp_feasible_range(:, grasps_count) = grasp_feasible_range_pp;
 		grasp_frame(:, grasps_count)          = grasp_frame_pp;
 		fprintf(' - 	Grasp %-4d of %-4d\r', grasps_count, para.NGS);
 		grasps_count = grasps_count + 1;
+
+        for i = 1:grasps_count-1
+            gp = reshape(grasp_points(:,i,:), [3,2]);
+        	plot3(gp(1,:), gp(2,:), gp(3,:), '. -','linewidth',2, 'markersize', 20);
+        	drawnow;
+        end
+        
+        break; % finish one sampling
 	end
 
 	if grasps_count > para.NGS 

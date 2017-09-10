@@ -47,7 +47,7 @@ para.showProblem_id         = [1 2 3];
 
 % get object mesh
 file_dir = dir('../model/data/*.stl');
-for i = 1:length(file_dir)
+for i = 3:length(file_dir)
 	filename = file_dir(i).name;	
     full_path = ['../model/data/' filename(1:end-4) '.mat'];
     
@@ -57,7 +57,7 @@ for i = 1:length(file_dir)
 	load(full_path); % only use object file
     [grasps, fgraph]               = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para);
 	
-	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps', 'gripper');
+% 	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps', 'gripper');
 end
 
 % % modify error bound
