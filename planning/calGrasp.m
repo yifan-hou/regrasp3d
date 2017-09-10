@@ -32,12 +32,24 @@ while true
 
 	% 2. check the distance between old points
 	similar_grasp_i = false;
+    similar_grasps  = [];
 	if grasps_count > 1
-		dist1 = [normByCol(bsxfun(@minus, grasp_points(:, 1:grasps_count, 1), grasp_points_face_i)) ...
-				 normByCol(bsxfun(@minus, grasp_points(:, 1:grasps_count, 2), grasp_points_face_i))];
-		if any(dist1 < para.GRASP_DIST_LIMIT)
+		dist1 = normByCol(bsxfun(@minus, grasp_points(:, 1:grasps_count, 1), grasp_points_face_i));
+        dist2 = normByCol(bsxfun(@minus, grasp_points(:, 1:grasps_count, 2), grasp_points_face_i));
+        
+		similar_grasp_id = dist1 < para.GRASP_DIST_LIMIT;
+        if any(similar_grasp_id)
 			similar_grasp_i = true;
-		end
+            similar_grasps  = grasp_points(:, similar_grasp_id, 2); 
+        end
+        
+        similar_grasp_id = dist2 < para.GRASP_DIST_LIMIT;
+        if any(similar_grasp_id)
+			similar_grasp_i = true;
+            similar_grasps  = [similar_grasps grasp_points(:, similar_grasp_id, 1)]; 
+        end
+        
+        
 	end
 
 	% 3. check if this point belongs to a good grasp
@@ -63,19 +75,19 @@ while true
 		grasp_points_face_j_samples = sampleTriUniform(p2(:,1), p2(:,2),p2(:,3), Ns_j);
 		angle_is_good               = false;
         for s = 1:Ns_j
-            % check angles 
+            % check angles
             d12 = grasp_points_face_j_samples(:, s) - grasp_points_face_i;
             if norm(d12) < 1e-3
-            	continue;
+                continue;
             end
             d12 = d12/norm(d12);
-			if (acos(abs(n1'*d12)) > ANGLE_TOL) || (acos(abs(n2'*d12)) > ANGLE_TOL)
-				continue;
-			end
-			angle_is_good = true;
-			grasp_points_face_j = grasp_points_face_j_samples(:, s);
-			break;
-		end
+            if (acos(abs(n1'*d12)) > ANGLE_TOL) || (acos(abs(n2'*d12)) > ANGLE_TOL)
+                continue;
+            end
+            angle_is_good = true;
+            grasp_points_face_j = grasp_points_face_j_samples(:, s);
+            break;
+        end
 
 		if ~angle_is_good
 			continue;
@@ -101,24 +113,21 @@ while true
 		end
 
 		% collision checking is good, check the distance between previous grasps
-		similar_grasp_j = false;
-		if similar_grasp_i
-			dist2 = [normByCol(bsxfun(@minus, grasp_points(:, 1:grasps_count, 1), grasp_points_face_j)) ...
-					 normByCol(bsxfun(@minus, grasp_points(:, 1:grasps_count, 2), grasp_points_face_j))];
-			if any(dist2 < para.GRASP_DIST_LIMIT)
-				similar_grasp_j = true;
-				resample_count  = resample_count + 1;
-				if resample_count > para.N_RESAMPLE
-					break;
-				else
-					continue;
-				end
-			else
-				resample_count = 0;
-			end
-		else
-			resample_count = 0;
-		end
+        if similar_grasp_i
+            dist2 = normByCol(bsxfun(@minus, similar_grasps, grasp_points_face_j));
+            if any(dist2 < para.GRASP_DIST_LIMIT)
+                resample_count  = resample_count + 1;
+                if resample_count > para.N_RESAMPLE
+                    break;
+                else
+                    continue;
+                end
+            else
+                resample_count = 0;
+            end
+        else
+            resample_count = 0;
+        end
 
 		grasp_points(:, grasps_count, 1)      = grasp_points_face_i;
 		grasp_points(:, grasps_count, 2)      = grasp_points_face_j;

@@ -21,35 +21,41 @@ end
 
 qgrasp = getProperGrasp(gp(:,1), gp(:,2)); 
 
-% open finger a little big when checking fingertip
-ax             = quatOnVec([1 0 0]', qgrasp); ax = ax/norm(ax);
-gp_delta       = gp;
-gp_delta(:, 1) = gp(:, 1) + (DELTA + 0.01)*ax;
-gp_delta(:, 2) = gp(:, 2) - (DELTA + 0.01)*ax;
+% open finger a little big when checking fingertip,
+% in case the grasp is tilting
+FINGERTIP_DIAMETER = 0.06;
+space              = FINGERTIP_DIAMETER/2*sin(para.ANGLE_TOL) + 0.01;
+ax                 = quatOnVec([1 0 0]', qgrasp); ax = ax/norm(ax);
+gp_delta           = gp;
+gp_delta(:, 1)     = gp(:, 1) + (DELTA + space)*ax;
+gp_delta(:, 2)     = gp(:, 2) - (DELTA + space)*ax;
 
 % figure(1);clf(1);
 % plotObject(mesh, 1);
 % plotGripper(1, gripper, [1 0 0 0]', gp, qgrasp);
 
+% fingertip_plus.vertices  = bsxfun(@plus, quatOnVec(gripper.vertices_safe{1}, qgrasp), gp_delta(:, 1))';
+% fingertip_minus.vertices = bsxfun(@plus, quatOnVec(gripper.vertices_safe{2}, qgrasp), gp_delta(:, 2))';
+% fingertip_plus.faces     = gripper.faces{1};
+% fingertip_minus.faces    = gripper.faces{2};
+
+% % check with coarse model
+% [~, surf] = SurfaceIntersection(mesh_s, fingertip_plus, 'debug', false);
+% if checkResult(surf)
+% 	return;
+% end
+% [~, surf] = SurfaceIntersection(mesh_s, fingertip_minus, 'debug', false);
+% if checkResult(surf)
+% 	return;
+% end
+
+% gp_delta(:, 1) = gp(:, 1) + DELTA*ax;
+% gp_delta(:, 2) = gp(:, 2) - DELTA*ax;
 fingertip_plus.vertices  = bsxfun(@plus, quatOnVec(gripper.vertices_safe{1}, qgrasp), gp_delta(:, 1))';
 fingertip_minus.vertices = bsxfun(@plus, quatOnVec(gripper.vertices_safe{2}, qgrasp), gp_delta(:, 2))';
 fingertip_plus.faces     = gripper.faces{1};
 fingertip_minus.faces    = gripper.faces{2};
 
-% check with coarse model
-[~, surf] = SurfaceIntersection(mesh_s, fingertip_plus, 'debug', false);
-if checkResult(surf)
-	return;
-end
-[~, surf] = SurfaceIntersection(mesh_s, fingertip_minus, 'debug', false);
-if checkResult(surf)
-	return;
-end
-
-gp_delta(:, 1) = gp(:, 1) + DELTA*ax;
-gp_delta(:, 2) = gp(:, 2) - DELTA*ax;
-fingertip_plus.vertices  = bsxfun(@plus, quatOnVec(gripper.vertices_safe{1}, qgrasp), gp_delta(:, 1))';
-fingertip_minus.vertices = bsxfun(@plus, quatOnVec(gripper.vertices_safe{2}, qgrasp), gp_delta(:, 2))';
 % check with precise model
 [~, surf] = SurfaceIntersection(mesh, fingertip_plus, 'debug', false);
 if checkResult(surf)
