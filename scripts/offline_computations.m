@@ -52,12 +52,17 @@ for i = 3:length(file_dir)
     full_path = ['../model/data/' filename(1:end-4) '.mat'];
     
 	disp(['Processing # ' num2str(i) ' of ' num2str(length(file_dir)) ', name: ' filename]);
-% 	[fgraph, pgraph, mesh, mesh_s] = getObject(para, filename);
-	gripper                        = getGripper();
+    
+%    use the following two lines for computing object and gripper
+	% [fgraph, pgraph, mesh, mesh_s] = getObject(para, filename);
+	% gripper                        = getGripper();
+%	use the following line to load object/gripper file
 	load(full_path); % only use object file
+
     [grasps, fgraph]               = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para);
 	
-% 	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps', 'gripper');
+	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps', 'gripper');
+	return;
 end
 
 % % modify error bound
