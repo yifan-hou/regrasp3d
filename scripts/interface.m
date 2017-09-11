@@ -93,15 +93,8 @@ load(filename);
 % -----------------------------------------------
 % 		Offline-computation
 % -----------------------------------------------
-
-
 % friction between object and  ground
 para.MU = 0.5;
-
-% Grasp sampling
-% para.NGS            = 200; % number of grasp pos samplings
-% para.ANGLE_TOL      = 0.1; % rad  % grasp axis tolerance
-% para.COM_DIST_LIMIT = 0.8; % meter
 
 % planning parameter
 para.GRIPPER_TILT_LIMIT          = 40*pi/180; % tilting angle tolerance
