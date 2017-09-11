@@ -22,7 +22,7 @@ function varargout = interface(varargin)
 
 % Edit the above text to modify the response to help interface
 
-% Last Modified by GUIDE v2.5 07-Sep-2017 16:51:41
+% Last Modified by GUIDE v2.5 11-Sep-2017 17:33:15
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -112,6 +112,7 @@ para.showProblem          = false;
 para.showProblem_id       = [1 2 3];
 para.show2Dproblem        = false;
 para.show2Dproblem_id     = 4;
+para.printing 			  = true; % control any printing outside of 'interface.m'
 
 
 % visualize all the checked grasps
@@ -137,6 +138,7 @@ qf = [1 0 0 0]';
 disp('[Load Model] Model is loaded.');
 
 set(handles.BTN_plan, 'Enable', 'on');
+set(handles.BTN_compare, 'Enable', 'on');
 set(handles.BTN_rand_initial, 'Enable', 'on');
 set(handles.BTN_rand_final, 'Enable', 'on');
 
@@ -152,26 +154,24 @@ disp('[Planning] Planning begin.');
 
 % get grasp points/grasp angles for initial and final pose
 if get(handles.CB_auto_grasp0, 'Value')
-	grasp_id_0 = checkGraspPoints(grasps, mesh, pgraph, q0, para.showGraspChecking_id(1), para);
-	qg0 = [];
+	grasp_id_0 = [];
+	qg0        = [];
 end
 
 if get(handles.CB_auto_graspf, 'Value')
-	grasp_id_f = checkGraspPoints(grasps, mesh, pgraph, qf, para.showGraspChecking_id(2), para);
-	qgf = [];
+	grasp_id_f = [];
+	qgf        = [];
 end
 
-
-[path_found, plan_3d] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f);
-
+method = 'pickplace';
+% method = 'pivoting';
+[path_found, plan_3d] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f, method);
 
 if path_found
 	set(handles.BTN_animate, 'Enable', 'on');
 else
 	set(handles.BTN_animate, 'Enable', 'off');
 end
-
-
 
 
 function BTN_rand_initial_Callback(hObject, eventdata, handles)
@@ -430,57 +430,79 @@ if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColo
 end
 
 
-% --- Executes on button press in BTN_compare.
+% 	Re-orienting test
 function BTN_compare_Callback(hObject, eventdata, handles)
 clc;
-global para fgraph pgraph mesh gripper grasps q0 qf qg0 qgf% inputs
-global path_found  plan_3d % outputs
-global grasp_id_0 grasp_id_f
+global para 
+
+para.printing = false;
+
+pivoting.plans       = [];
+pivoting.scores      = [];
+pivoting.path_found  = [];
+pickplace.plans      = [];
+pickplace.scores     = [];
+pickplace.path_found = [];
+
 
 % ------------------------------------------
-% 	Re-orienting test
+% 	get list of objects
 % ------------------------------------------
-% get list of objects
+files = dir('../model/data/*.mat');
+Nobj  = length(files);
 
-% get the list of stable poses
-for i = 1:fgraph.NM
-	qobj = fgraph.quat(:,i);
-	grasp_id = fgraph.grasps(i, :);
+for i_obj = 1:Nobj
+	load(files(i_obj).name);
+	disp(['[Object #' num2str(i_obj) '] -----------------------']);
+	% get the list of stable poses
+	% 	fgraph.quat(:,i)
+	% 	fgraph.grasps(i, :)
+	% 	fgraph.NM
+
+	% list of problems
+	C    = nchoosek(1:fgraph.NM, 2);
+	NP_i = size(C, 1); % number of problems for this object
+	disp(['[Stable Modes: ' num2str(fgraph.NM) '	Problems: ' num2str(NP_i)]);
+
+	pivoting_plans       = cell(1, NP_i);
+	pivoting_scores      = cell(1, NP_i);
+	pivoting_path_found  = false(1, NP_i);
+	pickplace_plans      = cell(1, NP_i);
+	pickplace_scores     = cell(1, NP_i);
+	pickplace_path_found = false(1, NP_i);
+
+	for p = 1:NP_i
+		mid0 = C(p, 1);
+		midf = C(p, 2);
+
+		q0 = fgraph.quat(:, mid0);
+		qf = fgraph.quat(:, midf);
+
+		[pivoting_path_found(p), pivoting_plans{p}] = solveAProblem(q0, qf, [], [], [], [], 'pivoting');
+		[pickplace_path_found(p), pickplace_plans{p}] = solveAProblem(q0, qf, [], [], [], [], 'pickplace');
+
+		pivoting_scores{p} = evalPlan(pivoting_plans{p});
+		pickplace_scores{p} = evalPlan(pickplace_plans{p});
+
+		disp(['		Problem #' num2str(p) ' of ' num2str(NP_i) ', Pivoting: ' num2str(pivoting_path_found(p)) ', P&P: ' num2str(pickplace_path_found(p))]);
+	end
+
+	pivoting.plans       = {pivoting.plans       pivoting_plans};
+	pivoting.scores      = {pivoting.scores       pivoting_scores};
+	pivoting.path_found  = [pivoting.path_found  pickplace_path_found];
+	pickplace.plans      = {pickplace.plans      pickplace_plans};
+	pickplace.scores     = {pickplace.scores      pickplace_scores};
+	pickplace.path_found = [pickplace.path_found pickplace_path_found];
 end
 
-% get list of problems
+save '../model/data/comparison1.mat' pivoting pickplace;
+set(handles.BTN_show_results, 'Enable', 'on');
 
 
-% solve by pivoting-regrasping
-% [path_found, path_q, path_graspid, path_qp, plan_2d] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f);
-% solve by pick-and-place-regrasping
-
-% measure:
-% 	solvable
-% 	length of robot motions
-% 	number of regrasps
-
-
-
-
-% % get grasp points/grasp angles for initial and final pose
-% if get(handles.CB_auto_grasp0, 'Value')
-% 	grasp_id_0 = checkGraspPoints(grasps, mesh, pgraph, q0, para.showGraspChecking_id(1), para);
-% 	qg0 = [];
-% end
-
-% if get(handles.CB_auto_graspf, 'Value')
-% 	grasp_id_f = checkGraspPoints(grasps, mesh, pgraph, qf, para.showGraspChecking_id(2), para);
-% 	qgf = [];
-% end
-
-
-% [path_found, path_q, path_graspid, path_qp, plan_2d] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f);
-
-
-% if path_found
-% 	set(handles.BTN_animate, 'Enable', 'on');
-% else
-% 	set(handles.BTN_animate, 'Enable', 'off');
-% end
+% --- Executes on button press in BTN_show_results.
+function BTN_show_results_Callback(hObject, eventdata, handles)
+% hObject    handle to BTN_show_results (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+load 'comparison1.mat'
 

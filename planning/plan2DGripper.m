@@ -1,7 +1,6 @@
 % outputs:
 % 	plan.obj_motion_diff:  1xNc array of object rotation angles in each of N stages. rotation w.r.t [0 0 1]' in grasp frame.
 % 	plan.grp_motion_diff: 1xNc array of gripper rotation angles in each of N stages. rotation w.r.t [0 0 1]' in grasp frame.
-% 	plan.grp_init_ang: initial gripper ang. 0 is in middle.
 % 	plan.rtype: 1xNc array
 % 	plan.dir: scalar
 function	plan = plan2DGripper(object_plan, init_grasp_ang, gripper_cone_width)
@@ -19,6 +18,10 @@ obj_ending_1 = obj_ending_2 - 2*gripper_cone_width;
 % 	Choose end point
 % --------------------------------
 obj_ending = (obj_ending_1 + obj_ending_2)/2; % the ideal ending position: gripper at middle
+if obj_ending < 0
+    obj_ending = 0;
+end
+
 for s = 1:N
 	obj_motion_acc     = sum(object_plan.motion(1:(s-1)));
 	obj_motion_acc_nxt = sum(object_plan.motion(1:s    ));
@@ -100,6 +103,7 @@ for s = 1:N
 		% check termination
 		if obj_motion_acc_nxt + 1e-5 > obj_ending
 			object_plan.motion(s) = obj_ending - obj_motion_acc;
+			assert(object_plan.motion(s) >= 0);
 			if object_plan.dir > 0
 				grp_ending = obj_ending_2 - obj_ending;
 			else
@@ -126,6 +130,6 @@ plan.rtype            = object_plan.rtype(1:s);
 plan.dir              = object_plan.dir;
 plan.obj_motion_diff  = object_plan.motion(1:s);
 plan.grp_motion_diff  = grp_motion_diff(1:s);
-plan.grp_init_ang     = init_grasp_ang;
+% plan.grp_init_ang     = init_grasp_ang;
 
 end

@@ -6,9 +6,11 @@
 %   range0: 360x1, array of collision checking results in original frame
 %   qg: pose of gp1, gp2 measured in world frame
 % Outputs:
-%   qg: a collision free orientation
+%   qg: a collision free orientation closed to upright
 %   qframe: the grasp frame
-function [qg qframe] = getProperGrasp(gp1, gp2, range0, q0, gp10, gp20, para)
+%   id_center: id of current upright gripper direction in range0
+%   range_: same as range0, but all the angle outside of gripper_cone_width are set to 0
+function [qg, qframe, id_center, range_] = getProperGrasp(gp1, gp2, range0, q0, gp10, gp20, para, gripper_cone_width)
 v  = gp1 - gp2;
 v  = v/norm(v);
 
@@ -29,15 +31,15 @@ else
         % get the rotation that rotates u1 to u
         % then apply it to q1
         qtemp = quatBTVec(u1, u);
-        qg  = quatMTimes(qtemp, q1);
+        qg    = quatMTimes(qtemp, q1);
 
         % check, there are two u, one of them will turn gravity upwards 
         g1 = quatOnVec([0 0 -1]', qg);
         if g1(3) > 0
         	% redo with -u
-        	u  = -u;
-        	qtemp = quatBTVec(u1, u);
-        	qg  = quatMTimes(qtemp, q1);
+            u     = -u;
+            qtemp = quatBTVec(u1, u);
+            qg    = quatMTimes(qtemp, q1);
         end
     end
     
@@ -52,6 +54,7 @@ if nargin < 3
     return;
 end
 
+
 % ------------------------------------------------
 %   Collision checking
 % ------------------------------------------------
@@ -60,14 +63,24 @@ qg0 = getProperGrasp(gp10, gp20);
 
 % 2. rotate reference grasp to current frame
 qg0 = quatMTimes(q0, qg0);
-
 assert(angBTVec(quatOnVec([1 0 0]', qg0), v) < 1e-3);
 
 % 3. compare and find the angle 
 z0        = quatOnVec([0 0 1]', qg0);
 z1        = quatOnVec([0 0 1]', qg);
-ang       = round(angBTVec(z0, z1, v, 1)*180/pi);
+ang       = round(angBTVec(z0, z1, v, 1)*180/pi); % 0~360
+id_center = ang;
 safe_zone = (ang - para.COLLISION_FREE_ANGLE_MARGIN):(ang + para.COLLISION_FREE_ANGLE_MARGIN);
+
+if nargin >= 8
+    % range 1: ok 0: collision
+    gripper_cone_width_deg = round(gripper_cone_width*180/pi);
+    cone_zone              = (ang - gripper_cone_width_deg):(ang + gripper_cone_width_deg);
+    range0_zone            = circQuery(range0, cone_zone);
+    range_                 = 0*range0;
+    range_                 = circQuery(range_, cone_zone, range0_zone);
+end
+
 
 % 4. check collision, find a collision free solution
 % move towards positive
@@ -111,5 +124,8 @@ end
 
 qrot = aa2quat(displace, v);
 qg   = quatMTimes(qrot, qg);
+
+
+
 
 end

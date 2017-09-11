@@ -108,7 +108,6 @@ for d = 1:2
     else % s_dir(1) < 0
         ang2goal = angBTVec(gripper_cone_left,  goal, -z, 1);
     end
-    % disp(['Angle to goal:' num2str(ang2goal*180/pi)]);
 
     % calculate possible initial rolling angle
     if s_dir(1) < 0
@@ -156,6 +155,7 @@ for d = 1:2
         % check current rotation state
         rtype(fr)  = checkPivotability(s_com, s_ps(:, z_min_id), min(s_cp(1,:)), max(s_cp(1,:)), gp, g, ps_err, para);
         motion(fr) = ang2next;
+        assert(ang2next >= 0);
         if rtype(fr) == -1
             % constraint violated
             s_dir = - s_dir;
@@ -206,6 +206,7 @@ for d = 1:2
             % further check the whole trajectory, determine feasibility
             [feasible, motion, rtype, sliding_motion, sliding, cf_range_at_roll]  = checkTraj(motion, rtype, sliding, init_roll_ang, s_dir(1), ...
                                                              cf_range, cf_zero_id, gripper_cone_width);
+            assert(~any(motion < 0));
             if feasible
                 % good! record
                 feasible_dir           = s_dir(1);
@@ -233,15 +234,6 @@ else
     plan.sliding          = sliding;
     plan.dir              = feasible_dir;
     plan.cf_range_at_roll = cf_range_at_roll;
-
-    % check
-    init_goal_ang = angBTVec([0 1 0]', goal, [0 0 1]');
-    if feasible_dir > 0
-        final_goal_ang = init_goal_ang - sum(motion);
-    else
-        final_goal_ang = init_goal_ang + sum(motion);
-    end
-    disp(['final_goal_ang: ' num2str(180/pi*final_goal_ang)]);
 end
 
 end
