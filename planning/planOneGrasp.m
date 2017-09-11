@@ -2,7 +2,7 @@
 % 	grasp_id: a specific grasp pos
 % 	q0, qf: initial/final object pose
 % 	qg0, qgf: initial/final grasp pose (could be empty)
-function [plan_2d, qp, flag] = planOneGrasp(mesh, grasps, grasp_id, q0, qf, qg0, qgf, pgraph, para )
+function [plan_2d, flag] = planOneGrasp(mesh, grasps, grasp_id, q0, qf, qg0, qgf, pgraph, para )
 
 % -----------------------------------------
 % 	Get the grasps
@@ -210,6 +210,10 @@ q_achieve = quatMTimes(quatInv(q_now), qgrasp_now);
 
 assert(angBTquat(q_goal, q_achieve) < 1e-3); 
 
+plan_2d.q0 = q0;
+plan_2d.qf = qf;
+plan_2d.qp = qp;
+plan_2d.grasp_id = grasp_id;
 
 end
 

@@ -88,50 +88,37 @@ varargout{1} = handles.output;
 function BTN_load_model_Callback(hObject, eventdata, handles)
 global filename para fgraph pgraph mesh mesh_s grasps gripper q0 qf
 clc;
+load(filename);
+
 % -----------------------------------------------
 % 		Offline-computation
 % -----------------------------------------------
-% Constraints
-para.GRIPPER_TILT_LIMIT = 40*pi/180; % tilting angle tolerance
-para.GRIPPER_Z_LIMIT    = 0.2; % finger position limit
 
 
 % friction between object and  ground
 para.MU = 0.5;
 
 % Grasp sampling
-para.NGS            = 200; % number of grasp pos samplings
-para.ANGLE_TOL      = 0.1; % rad  % grasp axis tolerance
-para.COM_DIST_LIMIT = 0.8; % meter
+% para.NGS            = 200; % number of grasp pos samplings
+% para.ANGLE_TOL      = 0.1; % rad  % grasp axis tolerance
+% para.COM_DIST_LIMIT = 0.8; % meter
 
 % planning parameter
+para.GRIPPER_TILT_LIMIT          = 40*pi/180; % tilting angle tolerance
+para.GRIPPER_Z_LIMIT             = 0.2; % finger position limit
 para.PIVOTABLE_CHECK_GRANULARITY = 1*pi/180; % 1 sample every 1 degree
 para.COLLISION_FREE_ANGLE_MARGIN = 5; % stay away from collsion for at least 5 degrees
 									  % has to be an positive integer
 
-% Popups 
-% para.showObject             = true; % show object and the simplified object
-% para.showObject_id          = [1 2 3];
-% para.showStablePoses        = false;
-% para.showStablePoses_id     = 1;
+% ploting control
 para.showCheckedGrasp     = true;
 para.showCheckedGrasp_id  = 1;
 para.showGraspChecking    = false;
 para.showGraspChecking_id = [2 3];
 para.showProblem          = false;
 para.showProblem_id       = [1 2 3];
-para.show2Dproblem        = true;
+para.show2Dproblem        = false;
 para.show2Dproblem_id     = 4;
-
-% get object mesh
-% filename = 'planefrontstay.stl';
-
-% [fgraph, pgraph, mesh, mesh_s] = getObject(para, filename);
-gripper                        = getGripper();
-% [grasps, fgraph]               = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para);
-% save ../model/data/planefrontstay_data.mat fgraph pgraph mesh mesh_s grasps fgraph;
-
-load(filename);
 
 
 % visualize all the checked grasps
@@ -165,7 +152,7 @@ set(handles.BTN_rand_final, 'Enable', 'on');
 function BTN_plan_Callback(hObject, eventdata, handles)
 clc;
 global para fgraph pgraph mesh gripper grasps q0 qf qg0 qgf% inputs
-global path_found path_q path_graspid path_qp plan_2d % outputs
+global path_found plan_3d % outputs
 global grasp_id_0 grasp_id_f
 
 disp('[Planning] Planning begin.');
@@ -182,7 +169,7 @@ if get(handles.CB_auto_graspf, 'Value')
 end
 
 
-[path_found, path_q, path_graspid, path_qp, plan_2d] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f);
+[path_found, plan_3d] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f);
 
 
 if path_found
@@ -207,11 +194,10 @@ plotObject(mesh, handles.AX_final, qf);
 
 
 function BTN_animate_Callback(hObject, eventdata, handles)
-global para mesh grasps gripper
-global path_found path_q path_graspid path_qp plan_2d
+global path_found plan_3d
 
 if path_found
-	animatePlan(mesh, grasps, gripper, handles.AX_animation, path_q, path_graspid, path_qp, plan_2d);
+	animatePlan(handles.AX_animation, plan_3d);
 end
 
 
@@ -282,7 +268,7 @@ gp20_w   = quatOnVec(gp2o_w, q0);
 qg0      = getProperGrasp(gp10_w, gp20_w, grasps.range(:, grasp_id), q0, gp1o_w, gp2o_w, para); % grasp frame for q0, under world coordinate
 
 plotObject(mesh, handles.AX_initial, q0);
-plotGripper(handles.AX_initial, gripper, q0, [gp1o_w gp2o_w], qg0);
+plotGripper(handles.AX_initial, gripper, q0, [gp10_w gp20_w], qg0);
 rotate3d on;
 
 
@@ -328,7 +314,7 @@ gp2f_w   = quatOnVec(gp2o_w, qf);
 qgf      = getProperGrasp(gp1f_w, gp2f_w, grasps.range(:, grasp_id), qf, gp1o_w, gp2o_w, para); % grasp frame for qf, under world coordinate
 
 plotObject(mesh, handles.AX_final, qf);
-plotGripper(handles.AX_final, gripper, qf, [gp1o_w gp2o_w], qgf);
+plotGripper(handles.AX_final, gripper, qf, [gp1f_w gp2f_w], qgf);
 rotate3d on;
 
 % --- Executes on button press in CB_auto_grasp0.
@@ -364,7 +350,7 @@ else
 	qg0      = getProperGrasp(gp10_w, gp20_w, grasps.range(:, grasp_id), q0, gp1o_w, gp2o_w, para); % grasp frame for q0, under world coordinate
 	
 	plotObject(mesh, handles.AX_initial, q0);
-	plotGripper(handles.AX_initial, gripper, q0, [gp1o_w gp2o_w], qg0);
+	plotGripper(handles.AX_initial, gripper, q0, [gp10_w gp20_w], qg0);
 	rotate3d on;
 end
 
@@ -403,7 +389,7 @@ else
 	qgf      = getProperGrasp(gp1f_w, gp2f_w, grasps.range(:, grasp_id), qf, gp1o_w, gp2o_w, para); % grasp frame for q0, under world coordinate
 
 	plotObject(mesh, handles.AX_final, qf);
-	plotGripper(handles.AX_final, gripper, qf, [gp1o_w gp2o_w], qgf);
+	plotGripper(handles.AX_final, gripper, qf, [gp1f_w gp2f_w], qgf);
 	rotate3d on;
 end
 
@@ -455,7 +441,7 @@ end
 function BTN_compare_Callback(hObject, eventdata, handles)
 clc;
 global para fgraph pgraph mesh gripper grasps q0 qf qg0 qgf% inputs
-global path_found path_q path_graspid path_qp plan_2d % outputs
+global path_found  plan_3d % outputs
 global grasp_id_0 grasp_id_f
 
 % ------------------------------------------

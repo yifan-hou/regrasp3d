@@ -118,17 +118,14 @@ for s = 1:N
 		grp_motion_acc     = grp_motion_acc + grp_motion_diff(s);
 	end
 
-
 end
 
-plan.rtype           = object_plan.rtype(1:s);
-plan.dir             = object_plan.dir;
-plan.obj_motion_diff = object_plan.motion(1:s);
-plan.grp_motion_diff = grp_motion_diff(1:s);
-plan.grp_init_ang    = init_grasp_ang;
-
-% check
-final_grasp_ang = init_grasp_ang + sum(plan.grp_motion_diff);
-disp(['final_grasp_ang: ' num2str(180/pi*final_grasp_ang)]);
+plan.obj_sliding_acc  = object_plan.sliding_motion;
+plan.obj_sliding_type = object_plan.sliding;
+plan.rtype            = object_plan.rtype(1:s);
+plan.dir              = object_plan.dir;
+plan.obj_motion_diff  = object_plan.motion(1:s);
+plan.grp_motion_diff  = grp_motion_diff(1:s);
+plan.grp_init_ang     = init_grasp_ang;
 
 end

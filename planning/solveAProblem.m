@@ -1,4 +1,4 @@
-function [path_found, path_q, path_graspid, path_qp, plan_2d] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f)
+function [path_found, plan_3d] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f)
 global para fgraph pgraph mesh gripper grasps % inputs
 
 % treat initial/final pose as additional mode
@@ -49,7 +49,7 @@ while true
 
 	path_q       = zeros(4, NP);
 	path_graspid = zeros(1, NP-1);
-	path_qp      = zeros(4, NP-1);
+	% path_qp      = zeros(4, NP-1);
 	plan_2d      = cell(1,  NP-1);
 	path_found   = false;
 
@@ -75,7 +75,8 @@ while true
 		for i = 1:length(id_common)
 			path_graspid(p) = id_common(i);
 
-			[plan_2d_temp, qp_temp, flag] = planOneGrasp(mesh, grasps, id_common(i), path_q(:,p), path_q(:,p+1), qg0_p, qgf_p, pgraph, para);
+			[plan_2d_temp, flag] = planOneGrasp(mesh, grasps, id_common(i), path_q(:,p), path_q(:,p+1), qg0_p, qgf_p, pgraph, para);
+
 
 		    if flag <= 0
                 switch flag
@@ -92,8 +93,7 @@ while true
                 end
 		        continue;
 		    else
-				plan_2d{p} = plan_2d_temp;
-				path_qp(:,p)            = qp_temp;
+				plan_2d{p}   = plan_2d_temp;
 		        disp(['  --- Grasp ' num2str(i) ' works.']);
 		        break;
 		    end
@@ -112,6 +112,7 @@ while true
 	end % end a path
 
 	if path_found
+		plan_3d   = plan3D(plan_2d);
 		disp(['[Planning] Solution found. Length = ' num2str(NP) ]);
 		break;
 	end

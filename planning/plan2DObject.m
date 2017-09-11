@@ -24,6 +24,7 @@ init = R*init;  % init(3) should = 0
 assert(abs(init(3)) < 1e-3);
 assert(abs(goal(3)) < 1e-3);
 
+CONE = atan(para.MU);
 
 % check initial grasp orientation
 if norm(g(1:2)) < 1e-2
@@ -101,7 +102,6 @@ for d = 1:2
         drawnow
     end
     
-    
     % calculate goal angle
     if s_dir(1) > 0
         ang2goal = angBTVec(gripper_cone_right,  goal, z, 1);
@@ -128,6 +128,7 @@ for d = 1:2
 
     Nframes = floor(ang2goal/para.PIVOTABLE_CHECK_GRANULARITY)+1;
     motion  = zeros(1, Nframes);
+    sliding = true(1, Nframes);
     rtype   = zeros(1, Nframes);
 
     axisz   = -z*s_dir(1);
@@ -148,6 +149,7 @@ for d = 1:2
         % find out new contact points
         s_ps_w              = Rw_2d'*s_ps;
         [psz_min, z_min_id] = min(s_ps_w(3, :));
+        assert(psz_min < 0);
         s_cpid              = s_ps_w(3, :) - psz_min < 2*ps_err;
         s_cp                = s_ps(:, s_cpid);
 
@@ -159,6 +161,18 @@ for d = 1:2
             s_dir = - s_dir;
             flag  = -1; % flag could be re-written later, if success
             break; % stop current rolling, try the other direction
+        elseif rtype(fr) == 1 
+            % pivoting
+            if s_ps(1, z_min_id)*s_dir(1) <= 0
+                % going down
+                % find the smallest possible angle
+                assert(~any(s_cp(1, :)*s_dir(1) > 0)); % all possible contact points should be in one quadrant 
+                assert(~any(s_cp(2, :) > 0)); % all possible contact points should be in one quadrant 
+                cones = atan2(abs(s_cp(1, :)), -s_cp(2, :));
+                if min(cones) < CONE
+                    sliding(fr) = false;
+                end
+            end
         end
 
         % do the rotation
@@ -179,8 +193,8 @@ for d = 1:2
             h_ps.YData      = s_ps(2,:);
             h_goal.XData    = [0 s_goal(1)];
             h_goal.YData    = [0 s_goal(2)];
-            if rtype(end) == 1
-                h_fingertip.Color = [0 1 0];
+            if rtype(fr) == 1
+                h_fingertip.Color = [0 1 1];
             else
                 h_fingertip.Color = [0.5 0.5 0];
             end
@@ -190,17 +204,17 @@ for d = 1:2
         
         if flag_finish_now
             % further check the whole trajectory, determine feasibility
-            [feasible, motion, rtype, cf_range_at_roll]  = checkTraj(motion, rtype, init_roll_ang, s_dir(1), ...
+            [feasible, motion, rtype, sliding_motion, sliding, cf_range_at_roll]  = checkTraj(motion, rtype, sliding, init_roll_ang, s_dir(1), ...
                                                              cf_range, cf_zero_id, gripper_cone_width);
             if feasible
                 % good! record
-                feasible_dir   = s_dir(1);
+                feasible_dir           = s_dir(1);
                 object_motion_feasible = true;
-                flag = 1; % successful
+                flag                   = 1; % successful
                 break;
             else
                 s_dir = - s_dir;
-                flag = -1; 
+                flag  = -1; 
                 break;
             end            
         end
@@ -215,6 +229,8 @@ if ~object_motion_feasible
 else
     plan.motion           = motion;
     plan.rtype            = rtype;
+    plan.sliding_motion   = sliding_motion;
+    plan.sliding          = sliding;
     plan.dir              = feasible_dir;
     plan.cf_range_at_roll = cf_range_at_roll;
 
@@ -302,14 +318,16 @@ end
 %   feasible: bool
 %   motion_: nx1 concatenated motion stages
 %   type_: nx1 types of each stages, no consecutive value. 010101
+%   sliding_motion: kx1 concatenated sliding stages. cumsum
+%   sliding_: kx1 types of sliding states. no consecutive value. 010101
 %   range_: 360xk, collision-free range at the beginning of each roll stage
-function [feasible, motion_, type_, range_] = checkTraj(motion, rtype, init_roll_ang, dir, cf_range, cf_zero_id, gripper_cone_width)
-N            = length(motion);
-first_roll   = true;
-feasible     = true;
-motion_      = zeros(N, 1);
-type_        = zeros(N, 1);
-stage_count_ = 0;
+function [feasible, motion_, type_, sliding_motion_, sliding_, range_] = checkTraj(motion, rtype, sliding, init_roll_ang, dir, cf_range, cf_zero_id, gripper_cone_width)
+N              = length(motion);
+first_roll     = true;
+feasible       = true;
+motion_        = zeros(N, 1);
+type_          = zeros(N, 1);
+stage_count_   = 0;
 
 roll_count_ = 0;
 Nrange      = round(gripper_cone_width*2*180/pi) + 1;
@@ -317,7 +335,7 @@ range_      = zeros(Nrange, N);
 
 i = 1;
 while true
-    accu_angle          = 0;
+    accu_angle            = 0;
     type_(stage_count_+1) = rtype(i);
     while true
         accu_angle = accu_angle + motion(i);
@@ -366,14 +384,46 @@ while true
 end
 
 if ~feasible
-    motion_ = [];
-    type_   = [];
-    range_  = [];
+    motion_         = [];
+    type_           = [];
+    range_          = [];
+    sliding_        = [];
+    sliding_motion_ = [];
     return;
 end
 
 motion_ = motion_(1:stage_count_);
 type_   = type_(1:stage_count_);
 range_  = range_(:, 1:roll_count_);
+
+% ---------------------------------------
+%   Check sliding state
+% ---------------------------------------
+sliding_        = zeros(N, 1);
+sliding_motion_ = zeros(N, 1);
+stage_count_    = 0;
+
+i = 1;
+while true
+    accu_angle               = 0;
+    sliding_(stage_count_+1) = sliding(i);
+    while true
+        accu_angle = accu_angle + motion(i);
+        i = i + 1;
+        if (i > N) || (sliding(i) ~= sliding_(stage_count_+1))
+            break;
+        end
+    end
+
+    sliding_motion_(stage_count_ + 1) = accu_angle;
+    stage_count_                     = stage_count_ + 1;
+
+    if i > N
+        break;
+    end
+end
+
+sliding_       = sliding_(1:stage_count_);
+sliding_motion_ = cumsum(sliding_motion_(1:stage_count_));
 
 end

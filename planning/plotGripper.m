@@ -14,7 +14,8 @@ end
 hold on;
 
 gp    = reshape(gp,[3 2]);
-gp_q  = quatOnVec(gp, q);
+% gp_q  = quatOnVec(gp, q);
+gp_q  = gp;
 
 % move gripper mesh
 fingertip_plus  = bsxfun(@plus, quatOnVec(gripper.vertices{1}, gq), gp_q(:,1));
@@ -52,5 +53,5 @@ end
 
 
 
-axis equal;
+% axis equal;
 end
