@@ -140,11 +140,9 @@ while true
 		fprintf(' - 	Grasp %-4d of %-4d\r', grasps_count, para.NGS);
 		grasps_count = grasps_count + 1;
 
-        for i = 1:grasps_count-1
-            gp = reshape(grasp_points(:,i,:), [3,2]);
-        	plot3(gp(1,:), gp(2,:), gp(3,:), '. -','linewidth',2, 'markersize', 20);
-        	drawnow;
-        end
+		gp = reshape(grasp_points(:,grasps_count-1,:), [3,2]);
+		plot3(gp(1,:), gp(2,:), gp(3,:), '. -','linewidth',2, 'markersize', 20);
+		drawnow;
         
         break; % finish one sampling
 	end
