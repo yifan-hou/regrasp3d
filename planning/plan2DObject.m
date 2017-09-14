@@ -149,7 +149,7 @@ for d = 1:2
         s_ps_w              = Rw_2d'*s_ps;
         [psz_min, z_min_id] = min(s_ps_w(3, :));
         assert(psz_min < 0);
-        s_cpid              = s_ps_w(3, :) - psz_min < 2*ps_err;
+        s_cpid              = s_ps_w(3, :) - psz_min < 2*ps_err + 1e-4;
         s_cp                = s_ps(:, s_cpid);
 
         % check current rotation state
@@ -167,8 +167,8 @@ for d = 1:2
                 % going down
                 % find the smallest possible angle
                 assert(~any(s_cp(1, :)*s_dir(1) > 0)); % all possible contact points should be in one quadrant 
-                assert(~any(s_cp(2, :) > 0)); % all possible contact points should be in one quadrant 
-                cones = atan2(abs(s_cp(1, :)), -s_cp(2, :));
+                cpid_dangerous = s_cp(2, :) < 0; % only those potential contacts need to be considered
+                cones = atan2(abs(s_cp(1, cpid_dangerous)), -s_cp(2, cpid_dangerous));
                 if min(cones) < CONE
                     sliding(fr) = false;
                 end

@@ -10,7 +10,7 @@
 %   qframe: the grasp frame
 %   id_center: id of current upright gripper direction in range0
 %   range_: same as range0, but all the angle outside of gripper_cone_width are set to 0
-function [qg, qframe, id_center, range_] = getProperGrasp(gp1, gp2, range0, q0, gp10, gp20, para, gripper_cone_width)
+function [qg, qframe, id_center, range_, qg0] = getProperGrasp(gp1, gp2, range0, q0, gp10, gp20, para, gripper_cone_width, randgrasp)
 v  = gp1 - gp2;
 v  = v/norm(v);
 
@@ -73,12 +73,45 @@ id_center = ang;
 safe_zone = (ang - para.COLLISION_FREE_ANGLE_MARGIN):(ang + para.COLLISION_FREE_ANGLE_MARGIN);
 
 if nargin >= 8
+    % consider gripper cone width
+
     % range 1: ok 0: collision
     gripper_cone_width_deg = round(gripper_cone_width*180/pi);
-    cone_zone              = (ang - gripper_cone_width_deg):(ang + gripper_cone_width_deg);
-    range0_zone            = circQuery(range0, cone_zone);
-    range_                 = 0*range0;
-    range_                 = circQuery(range_, cone_zone, range0_zone);
+    if gripper_cone_width_deg < 2*para.COLLISION_FREE_ANGLE_MARGIN
+        % no solution
+        qg     = [];
+        range_ = 0*range0;
+        return;
+    end
+
+    cone_zone   = (ang - gripper_cone_width_deg):(ang + gripper_cone_width_deg);
+    range0_zone = circQuery(range0, cone_zone);
+    range_      = 0*range0;
+    range_      = circQuery(range_, cone_zone, range0_zone);
+    id_range    = find(range_);
+    start1      = strfind([0,range_'==1],[0 1]);
+    end1        = strfind([range_'==1,0],[1 0]);
+    range_width = end1 - start1 + 1;
+    % ans =
+    %      5     2
+    if isempty(id_range) || max(range_width) < 2*para.COLLISION_FREE_ANGLE_MARGIN+2
+        qg = [];
+        return;
+    end
+
+    if nargin >= 9
+        while true
+            id_rand   = id_range(randi(length(id_range)));
+            safe_zone = id_rand - para.COLLISION_FREE_ANGLE_MARGIN : id_rand + para.COLLISION_FREE_ANGLE_MARGIN;
+            if all(circQuery(range_, safe_zone))
+                break;
+            end
+        end
+        displace = (id_rand - id_center)*pi/180;
+        qrot     = aa2quat(displace, v);
+        qg       = quatMTimes(qrot, qg);
+    end
+    return;
 end
 
 

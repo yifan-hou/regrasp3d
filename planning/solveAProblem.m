@@ -1,6 +1,7 @@
 function [path_found, plan_3d] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f, method)
 global para fgraph pgraph mesh gripper grasps % inputs
 
+plan_3d = [];
 % treat initial/final pose as additional mode
 % build the full graph
 dispC('[Planning] Building Full Graph:');
@@ -34,12 +35,12 @@ if any(grasp_id_f&grasp_id_0)
 	adj_matrix(fgraph.NM+2, fgraph.NM+1) = 1;
 end
 if ~any(grasp_id_0)
-	set(handles.BTN_animate, 'Enable', 'off');
+	path_found = false;
 	dispC('[Planning] No Solution. No feasible initial grasps.');
 	return;
 end
 if ~any(grasp_id_f)
-	set(handles.BTN_animate, 'Enable', 'off');
+	path_found = false;
 	dispC('[Planning] No Solution. No feasible final grasps.');
 	return;
 end
@@ -49,6 +50,7 @@ path_counter = 1;
 while true
 	[~, mode_id_path] = dijkstra(adj_matrix, ones(fgraph.NM+2), fgraph.NM+1, fgraph.NM+2);
 	NP                = length(mode_id_path);
+	path_found        = false;
 	if isnan(mode_id_path)
 		dispC('[Planning] No solution found given the available grasps.');
 		break;
@@ -60,7 +62,6 @@ while true
 	path_graspid = zeros(1, NP-1);
 	% path_qp      = zeros(4, NP-1);
 	plan_2d      = cell(1,  NP-1);
-	path_found   = false;
 
 	% motion planning for each edge on the path
 	path_q(:,1) = q0;
@@ -85,7 +86,6 @@ while true
 			path_graspid(p) = id_common(i);
 
 			[plan_2d_temp, flag] = planOneGrasp(mesh, grasps, id_common(i), path_q(:,p), path_q(:,p+1), qg0_p, qgf_p, pgraph, method, para);
-
 
 		    if flag <= 0
                 switch flag
@@ -120,7 +120,6 @@ while true
 
 	end % end a path
 
-	plan_3d = [];
 	if path_found
 		plan_3d   = plan3D(plan_2d);
 		dispC(['[Planning] Solution found. Length = ' num2str(NP) ]);

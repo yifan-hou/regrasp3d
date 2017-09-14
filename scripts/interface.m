@@ -22,7 +22,7 @@ function varargout = interface(varargin)
 
 % Edit the above text to modify the response to help interface
 
-% Last Modified by GUIDE v2.5 11-Sep-2017 17:33:15
+% Last Modified by GUIDE v2.5 14-Sep-2017 00:20:06
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -66,6 +66,7 @@ guidata(hObject, handles);
 addpath ../planning
 addpath ../model
 addpath ../model/data
+addpath ../model/results
 clc
 
 % --- Outputs from this function are returned to the command line.
@@ -139,6 +140,7 @@ disp('[Load Model] Model is loaded.');
 
 set(handles.BTN_plan, 'Enable', 'on');
 set(handles.BTN_compare, 'Enable', 'on');
+set(handles.BTN_compare2, 'Enable', 'on');
 set(handles.BTN_rand_initial, 'Enable', 'on');
 set(handles.BTN_rand_final, 'Enable', 'on');
 
@@ -163,9 +165,12 @@ if get(handles.CB_auto_graspf, 'Value')
 	qgf        = [];
 end
 
+para.printing = true;
 method = 'pickplace';
 % method = 'pivoting';
+% load debug
 [path_found, plan_3d] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f, method);
+
 
 if path_found
 	set(handles.BTN_animate, 'Enable', 'on');
@@ -222,44 +227,25 @@ end
 
 % --- Executes on button press in BTN_rand_grasp0.
 function BTN_rand_grasp0_Callback(hObject, eventdata, handles)
-global q0 qg0 grasp_id_0
+global q0  % input
+global qg0 grasp_id_0 % output
 global grasps gripper mesh pgraph para
 % hObject    handle to BTN_rand_grasp0 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% check all grasps for current pose
-all_grasps = checkGraspPoints(grasps, mesh, pgraph, q0, para.showGraspChecking_id(2), para);
-ids        = find(all_grasps);
-for i = 1:length(ids)
-	gp1o_w   = grasps.points(:, ids(i), 1);
-	gp2o_w   = grasps.points(:, ids(i), 2);
-	gp10_w   = quatOnVec(gp1o_w, q0);
-	gp20_w   = quatOnVec(gp2o_w, q0);
-	qg0      = getProperGrasp(gp10_w, gp20_w, grasps.range(:, ids(i)), q0, gp1o_w, gp2o_w, para); % grasp frame for q0, under world coordinate
-	if(angBTVec([0 0 1]', quatOnVec([0 0 1]', qg0)) > para.GRIPPER_TILT_LIMIT)
-		all_grasps(ids(i)) = false;
-	end
-end	
+[grasp_id_0, qg0, gp10_w, gp20_w] = randPickGrasp(q0);
+% load debug
+% grasp_id_0 = find(grasp_id_0);
+% gp1o_w = grasps.points(:, grasp_id_0, 1);
+% gp2o_w = grasps.points(:, grasp_id_0, 2);
+% gp10_w = quatOnVec(gp1o_w, q0);
+% gp20_w = quatOnVec(gp2o_w, q0);
 
-% pick one
-ids                 = find(all_grasps);
-if isempty(ids)
-	disp('No feasible grasps for this pose !!');
+if isempty(grasp_id_0)
 	return;
 end
-id                  = randi(length(ids));
-grasp_id_0          = zeros(size(all_grasps));
-grasp_id_0(ids(id)) = 1;
-
-% re-draw the object and gripper
-grasp_id = find(grasp_id_0);
-gp1o_w   = grasps.points(:, grasp_id, 1);
-gp2o_w   = grasps.points(:, grasp_id, 2);
-gp10_w   = quatOnVec(gp1o_w, q0);
-gp20_w   = quatOnVec(gp2o_w, q0);
-qg0      = getProperGrasp(gp10_w, gp20_w, grasps.range(:, grasp_id), q0, gp1o_w, gp2o_w, para); % grasp frame for q0, under world coordinate
-
+ 
 plotObject(mesh, handles.AX_initial, q0);
 plotGripper(handles.AX_initial, gripper, q0, [gp10_w gp20_w], qg0);
 rotate3d on;
@@ -267,45 +253,25 @@ rotate3d on;
 
 % --- Executes on button press in BTN_rand_graspf.
 function BTN_rand_graspf_Callback(hObject, eventdata, handles)
-global qf qgf grasp_id_f
+global qf 
+global qgf grasp_id_f
 global grasps gripper mesh pgraph para
 % hObject    handle to BTN_rand_grasp0 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% check all grasps for current pose
-all_grasps = checkGraspPoints(grasps, mesh, pgraph, qf, para.showGraspChecking_id(2), para);
-ids        = find(all_grasps);
-for i = 1:length(ids)
-	gp1o_w   = grasps.points(:, ids(i), 1);
-	gp2o_w   = grasps.points(:, ids(i), 2);
-	gp10_w   = quatOnVec(gp1o_w, qf);
-	gp20_w   = quatOnVec(gp2o_w, qf);
-	qgf      = getProperGrasp(gp10_w, gp20_w, grasps.range(:, ids(i)), qf, gp1o_w, gp2o_w, para); % grasp frame for qf, under world coordinate
-	if(angBTVec([0 0 1]', quatOnVec([0 0 1]', qgf)) > para.GRIPPER_TILT_LIMIT)
-		all_grasps(ids(i)) = false;
-	end
-end	
+[grasp_id_f, qgf, gp1f_w, gp2f_w]      = randPickGrasp(qf);
+% load debug
+% grasp_id_f = find(grasp_id_f);
+% gp1o_w = grasps.points(:, grasp_id_f, 1);
+% gp2o_w = grasps.points(:, grasp_id_f, 2);
+% gp1f_w = quatOnVec(gp1o_w, qf);
+% gp2f_w = quatOnVec(gp2o_w, qf);
 
-% pick one
-ids                 = find(all_grasps);
-if isempty(ids)
-	disp('No feasible grasps for this pose !!');
+if isempty(grasp_id_f)
 	return;
 end
-
-id                  = randi(length(ids));
-grasp_id_f          = zeros(size(all_grasps));
-grasp_id_f(ids(id)) = 1;
-
-% re-draw the object and gripper
-grasp_id = find(grasp_id_f);
-gp1o_w   = grasps.points(:, grasp_id, 1);
-gp2o_w   = grasps.points(:, grasp_id, 2);
-gp1f_w   = quatOnVec(gp1o_w, qf);
-gp2f_w   = quatOnVec(gp2o_w, qf);
-qgf      = getProperGrasp(gp1f_w, gp2f_w, grasps.range(:, grasp_id), qf, gp1o_w, gp2o_w, para); % grasp frame for qf, under world coordinate
-
+ 
 plotObject(mesh, handles.AX_final, qf);
 plotGripper(handles.AX_final, gripper, qf, [gp1f_w gp2f_w], qgf);
 rotate3d on;
@@ -433,16 +399,10 @@ end
 % 	Re-orienting test
 function BTN_compare_Callback(hObject, eventdata, handles)
 clc;
-global para 
+global para fgraph pgraph mesh gripper grasps % inputs
 
 para.printing = false;
 
-pivoting.plans       = [];
-pivoting.scores      = [];
-pivoting.path_found  = [];
-pickplace.plans      = [];
-pickplace.scores     = [];
-pickplace.path_found = [];
 
 
 % ------------------------------------------
@@ -451,9 +411,17 @@ pickplace.path_found = [];
 files = dir('../model/data/*.mat');
 Nobj  = length(files);
 
+pivoting.plans       = cell(1, Nobj);
+pivoting.scores      = cell(1, Nobj);
+pivoting.path_found  = [];
+pickplace.plans      = cell(1, Nobj);
+pickplace.scores     = cell(1, Nobj);
+pickplace.path_found = [];
+
 for i_obj = 1:Nobj
 	load(files(i_obj).name);
-	disp(['[Object #' num2str(i_obj) '] -----------------------']);
+	disp(['[Object #' num2str(i_obj) '] ---- ' files(i_obj).name ' ----']);
+
 	% get the list of stable poses
 	% 	fgraph.quat(:,i)
 	% 	fgraph.grasps(i, :)
@@ -462,14 +430,19 @@ for i_obj = 1:Nobj
 	% list of problems
 	C    = nchoosek(1:fgraph.NM, 2);
 	NP_i = size(C, 1); % number of problems for this object
+	if NP_i > 30
+		NP_i = 30;
+		C    = C(randi(NP_i, [1 30]), :);
+	end
 	disp(['[Stable Modes: ' num2str(fgraph.NM) '	Problems: ' num2str(NP_i)]);
 
-	pivoting_plans       = cell(1, NP_i);
-	pivoting_scores      = cell(1, NP_i);
-	pivoting_path_found  = false(1, NP_i);
-	pickplace_plans      = cell(1, NP_i);
-	pickplace_scores     = cell(1, NP_i);
-	pickplace_path_found = false(1, NP_i);
+	pivoting.plans{i_obj}       = cell(1, NP_i);      
+	pivoting.scores{i_obj}      = cell(1, NP_i);     
+	pickplace.plans{i_obj}      = cell(1, NP_i);     
+	pickplace.scores{i_obj}     = cell(1, NP_i);    
+
+	pivoting_path_found  = zeros(1, NP_i);
+	pickplace_path_found = zeros(1, NP_i);
 
 	for p = 1:NP_i
 		mid0 = C(p, 1);
@@ -478,25 +451,29 @@ for i_obj = 1:Nobj
 		q0 = fgraph.quat(:, mid0);
 		qf = fgraph.quat(:, midf);
 
-		[pivoting_path_found(p), pivoting_plans{p}] = solveAProblem(q0, qf, [], [], [], [], 'pivoting');
-		[pickplace_path_found(p), pickplace_plans{p}] = solveAProblem(q0, qf, [], [], [], [], 'pickplace');
+		[pivoting_path_found(p), pivoting.plans{i_obj}{p}]   = solveAProblem(q0, qf, [], [], [], [], 'pivoting');
+		[pickplace_path_found(p), pickplace.plans{i_obj}{p}] = solveAProblem(q0, qf, [], [], [], [], 'pickplace');
 
-		pivoting_scores{p} = evalPlan(pivoting_plans{p});
-		pickplace_scores{p} = evalPlan(pickplace_plans{p});
+%         assert(length(pivoting.path_found) == NM);
+		if pickplace_path_found(p) && ~pivoting_path_found(p)
+			error('weird');
+		end
+
+		pivoting.scores{i_obj}{p}  = evalPlan(pivoting.plans{i_obj}{p});
+		pickplace.scores{i_obj}{p} = evalPlan(pickplace.plans{i_obj}{p});
 
 		disp(['		Problem #' num2str(p) ' of ' num2str(NP_i) ', Pivoting: ' num2str(pivoting_path_found(p)) ', P&P: ' num2str(pickplace_path_found(p))]);
 	end
 
-	pivoting.plans       = {pivoting.plans       pivoting_plans};
-	pivoting.scores      = {pivoting.scores       pivoting_scores};
-	pivoting.path_found  = [pivoting.path_found  pickplace_path_found];
-	pickplace.plans      = {pickplace.plans      pickplace_plans};
-	pickplace.scores     = {pickplace.scores      pickplace_scores};
+	pivoting.path_found  = [pivoting.path_found pivoting_path_found];
 	pickplace.path_found = [pickplace.path_found pickplace_path_found];
 end
 
-save '../model/data/comparison1.mat' pivoting pickplace;
+save '../model/results/comparison1.mat' pivoting pickplace;
 set(handles.BTN_show_results, 'Enable', 'on');
+
+
+
 
 
 % --- Executes on button press in BTN_show_results.
@@ -505,4 +482,221 @@ function BTN_show_results_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 load 'comparison1.mat'
+clc;
+
+N                 = length(pivoting.path_found);
+N_pivoting_found  = sum(pivoting.path_found);
+N_pickplace_found = sum(pickplace.path_found);
+N
+disp(['NFound: ' num2str(N_pivoting_found) '	' num2str(N_pickplace_found)] );
+
+pivoting_ex_time      = zeros(1, N);
+pivoting_rotation     = zeros(1, N);
+pivoting_translation  = zeros(1, N);
+pivoting_NRegrasp     = zeros(1, N);
+pickplace_ex_time     = zeros(1, N);
+pickplace_rotation    = zeros(1, N);
+pickplace_translation = zeros(1, N);
+pickplace_NRegrasp    = zeros(1, N);
+
+pivoting_ex_time_total      = 0;
+pivoting_rotation_total     = 0;
+pivoting_translation_total  = 0;
+pivoting_NRegrasp_total     = 0;
+pickplace_ex_time_total     = 0;
+pickplace_rotation_total    = 0;
+pickplace_translation_total = 0;
+pickplace_NRegrasp_total    = 0;
+
+Nobj = length(pivoting.plans);
+count = 0;
+for i_obj = 1:Nobj
+	for i = 1:length(pivoting.plans{i_obj})
+		count = count + 1;
+		if pivoting.path_found(count)
+			pivoting_ex_time(count)      = pivoting.scores{i_obj}{i}.execution_time;
+			pivoting_rotation(count)     = pivoting.scores{i_obj}{i}.gripper_rotation;        
+			pivoting_translation(count)  = pivoting.scores{i_obj}{i}.gripper_translation;  
+			pivoting_NRegrasp(count)     = pivoting.scores{i_obj}{i}.N_regrasp;
+		end
+		if pickplace.path_found(count)
+			pickplace_ex_time(count)     = pickplace.scores{i_obj}{i}.execution_time;
+			pickplace_rotation(count)    = pickplace.scores{i_obj}{i}.gripper_rotation;
+			pickplace_translation(count) = pickplace.scores{i_obj}{i}.gripper_translation;  
+			pickplace_NRegrasp(count)    = pickplace.scores{i_obj}{i}.N_regrasp;
+
+			pivoting_ex_time_total      = pivoting_ex_time_total      + pivoting_ex_time(count);
+			pivoting_rotation_total     = pivoting_rotation_total     + pivoting_rotation(count);
+			pivoting_translation_total  = pivoting_translation_total  + pivoting_translation(count);
+			pivoting_NRegrasp_total     = pivoting_NRegrasp_total     + pivoting_NRegrasp(count);
+			pickplace_ex_time_total     = pickplace_ex_time_total     + pickplace_ex_time(count);
+			pickplace_rotation_total    = pickplace_rotation_total    + pickplace_rotation(count);
+			pickplace_translation_total = pickplace_translation_total + pickplace_translation(count);
+			pickplace_NRegrasp_total    = pickplace_NRegrasp_total    + pickplace_NRegrasp(count);
+		end
+	end
+end
+
+pivoting_ex_time_aver      = pivoting_ex_time_total/N_pickplace_found;
+pivoting_rotation_aver     = pivoting_rotation_total/N_pickplace_found;
+pivoting_translation_aver  = pivoting_translation_total/N_pickplace_found;
+pivoting_NRegrasp_aver     = pivoting_NRegrasp_total/N_pickplace_found;
+pickplace_ex_time_aver     = pickplace_ex_time_total/N_pickplace_found;
+pickplace_rotation_aver    = pickplace_rotation_total/N_pickplace_found;
+pickplace_translation_aver = pickplace_translation_total/N_pickplace_found;
+pickplace_NRegrasp_aver    = pickplace_NRegrasp_total/N_pickplace_found;
+
+% disp(['EX time: ' num2str(sum(pivoting_ex_time_aver)) '		' num2str(sum(pickplace_ex_time_aver))] );
+disp(['Total rotation: ' num2str(sum(pivoting_rotation_aver)) '		' num2str(sum(pickplace_rotation_aver))] );
+disp(['Total translation: ' num2str(sum(pivoting_translation_aver)) '		' num2str(sum(pickplace_translation_aver))] );
+disp(['# of regrasp: ' num2str(sum(pivoting_NRegrasp_aver)) '		' num2str(sum(pickplace_NRegrasp_aver))] );
+
+
+
+
+% --- Executes on button press in BTN_compare2.
+function BTN_compare2_Callback(hObject, eventdata, handles)
+clc;
+global para fgraph pgraph mesh gripper grasps % inputs
+
+para.printing = false;
+N_sample_per_object = 100;
+
+% ------------------------------------------
+% 	get list of objects
+% ------------------------------------------
+files = dir('../model/data/*.mat');
+Nobj  = length(files);
+
+pivoting.plans       = cell(1, Nobj);
+pivoting.scores      = cell(1, Nobj);
+pivoting.path_found  = [];
+pickplace.plans      = cell(1, Nobj);
+pickplace.scores     = cell(1, Nobj);
+pickplace.path_found = [];
+
+for i_obj = 3:Nobj
+	load(files(i_obj).name);
+	disp(['[Object #' num2str(i_obj) '] ---- ' files(i_obj).name ' ----']);
+
+	pivoting.plans{i_obj}       = cell(1, N_sample_per_object);      
+	pivoting.scores{i_obj}      = cell(1, N_sample_per_object);     
+	pickplace.plans{i_obj}      = cell(1, N_sample_per_object);     
+	pickplace.scores{i_obj}     = cell(1, N_sample_per_object);    
+
+	pivoting_path_found  = zeros(1, N_sample_per_object);
+	pickplace_path_found = zeros(1, N_sample_per_object);
+
+	for p = 1:N_sample_per_object
+		while true
+			q0                = quatRand();
+			qf                = quatRand();
+			[grasp_id_0, qg0] = randPickGrasp(q0);
+			[grasp_id_f, qgf] = randPickGrasp(qf);
+			if (~isempty(grasp_id_0))&&(~isempty(grasp_id_f))
+				break;
+			end
+		end
+
+		[pivoting_path_found(p), pivoting.plans{i_obj}{p}]   = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f, 'pivoting');
+		[pickplace_path_found(p), pickplace.plans{i_obj}{p}] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f, 'pickplace');
+
+		if pickplace_path_found(p) && ~pivoting_path_found(p)
+			if length(pickplace.plans{i_obj}{p}.qobj) <= 1
+				warning('weird');
+			end
+		end
+
+		pivoting.scores{i_obj}{p}  = evalPlan(pivoting.plans{i_obj}{p});
+		pickplace.scores{i_obj}{p} = evalPlan(pickplace.plans{i_obj}{p});
+
+		disp(['		Problem #' num2str(p) ' of ' num2str(N_sample_per_object) ', Pivoting: ' num2str(pivoting_path_found(p)) ', P&P: ' num2str(pickplace_path_found(p))]);
+	end
+
+	pivoting.path_found  = [pivoting.path_found pivoting_path_found];
+	pickplace.path_found = [pickplace.path_found pickplace_path_found];
+end
+
+save '../model/results/comparison2.mat' pivoting pickplace;
+set(handles.BTN_show_results, 'Enable', 'on');
+
+
+
+
+% --- Executes on button press in BTN_show_results2.
+function BTN_show_results2_Callback(hObject, eventdata, handles)
+% hObject    handle to BTN_show_results2 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+load 'comparison2.mat'
+clc;
+
+N                 = length(pivoting.path_found);
+N_pivoting_found  = sum(pivoting.path_found);
+N_pickplace_found = sum(pickplace.path_found);
+N
+disp(['NFound: ' num2str(N_pivoting_found) '	' num2str(N_pickplace_found)] );
+
+pivoting_ex_time      = zeros(1, N);
+pivoting_rotation     = zeros(1, N);
+pivoting_translation  = zeros(1, N);
+pivoting_NRegrasp     = zeros(1, N);
+pickplace_ex_time     = zeros(1, N);
+pickplace_rotation    = zeros(1, N);
+pickplace_translation = zeros(1, N);
+pickplace_NRegrasp    = zeros(1, N);
+
+pivoting_ex_time_total      = 0;
+pivoting_rotation_total     = 0;
+pivoting_translation_total  = 0;
+pivoting_NRegrasp_total     = 0;
+pickplace_ex_time_total     = 0;
+pickplace_rotation_total    = 0;
+pickplace_translation_total = 0;
+pickplace_NRegrasp_total    = 0;
+
+Nobj = length(pivoting.plans);
+count = 0;
+for i_obj = 1:Nobj
+	for i = 1:length(pivoting.plans{i_obj})
+		count = count + 1;
+		if pivoting.path_found(count)
+			pivoting_ex_time(count)      = pivoting.scores{i_obj}{i}.execution_time;
+			pivoting_rotation(count)     = pivoting.scores{i_obj}{i}.gripper_rotation;        
+			pivoting_translation(count)  = pivoting.scores{i_obj}{i}.gripper_translation;  
+			pivoting_NRegrasp(count)     = pivoting.scores{i_obj}{i}.N_regrasp;
+		end
+		if pickplace.path_found(count)
+			pickplace_ex_time(count)     = pickplace.scores{i_obj}{i}.execution_time;
+			pickplace_rotation(count)    = pickplace.scores{i_obj}{i}.gripper_rotation;
+			pickplace_translation(count) = pickplace.scores{i_obj}{i}.gripper_translation;  
+			pickplace_NRegrasp(count)    = pickplace.scores{i_obj}{i}.N_regrasp;
+
+			pivoting_ex_time_total      = pivoting_ex_time_total      + pivoting_ex_time(count);
+			pivoting_rotation_total     = pivoting_rotation_total     + pivoting_rotation(count);
+			pivoting_translation_total  = pivoting_translation_total  + pivoting_translation(count);
+			pivoting_NRegrasp_total     = pivoting_NRegrasp_total     + pivoting_NRegrasp(count);
+			pickplace_ex_time_total     = pickplace_ex_time_total     + pickplace_ex_time(count);
+			pickplace_rotation_total    = pickplace_rotation_total    + pickplace_rotation(count);
+			pickplace_translation_total = pickplace_translation_total + pickplace_translation(count);
+			pickplace_NRegrasp_total    = pickplace_NRegrasp_total    + pickplace_NRegrasp(count);
+		end
+	end
+end
+
+pivoting_ex_time_aver      = pivoting_ex_time_total/N_pickplace_found;
+pivoting_rotation_aver     = pivoting_rotation_total/N_pickplace_found;
+pivoting_translation_aver  = pivoting_translation_total/N_pickplace_found;
+pivoting_NRegrasp_aver     = pivoting_NRegrasp_total/N_pickplace_found;
+pickplace_ex_time_aver     = pickplace_ex_time_total/N_pickplace_found;
+pickplace_rotation_aver    = pickplace_rotation_total/N_pickplace_found;
+pickplace_translation_aver = pickplace_translation_total/N_pickplace_found;
+pickplace_NRegrasp_aver    = pickplace_NRegrasp_total/N_pickplace_found;
+
+% disp(['EX time: ' num2str(sum(pivoting_ex_time_aver)) '		' num2str(sum(pickplace_ex_time_aver))] );
+disp(['Total rotation: ' num2str(sum(pivoting_rotation_aver)) '		' num2str(sum(pickplace_rotation_aver))] );
+disp(['Total translation: ' num2str(sum(pivoting_translation_aver)) '		' num2str(sum(pickplace_translation_aver))] );
+disp(['# of regrasp: ' num2str(sum(pivoting_NRegrasp_aver)) '		' num2str(sum(pickplace_NRegrasp_aver))] );
+
 

@@ -162,7 +162,10 @@ disp(['[CalGrasp] Collision Checking time:' num2str(cctime)]);
 
 disp(['[CalGrasp] Number of grasps found: ' num2str(grasps_count-1)]);
 
-NGS = grasps_count - 1;
+NGS                  = grasps_count - 1;
+grasp_points         = grasp_points(:, 1:NGS, :);
+grasp_feasible_range = grasp_feasible_range(:, 1:NGS);
+grasp_frame          = grasp_frame(:, 1:NGS);
 % calculate quaternions for each grasp
 grasp_quats = zeros(4, NGS);
 for i = 1:NGS

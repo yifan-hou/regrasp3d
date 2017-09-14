@@ -1,6 +1,6 @@
 % do planning given:
-% 	grasp_id: a specific grasp pos
 % 	q0, qf: initial/final object pose
+% 	grasp_id: a specific grasp pos
 % 	qg0, qgf: initial/final grasp pose (could be empty)
 function [plan_2d, flag] = planOneGrasp(mesh, grasps, grasp_id, q0, qf, qg0, qgf, pgraph, method, para )
 plan_2d = []; 
@@ -26,8 +26,28 @@ if strcmp(method, 'pickplace')
 	end
 
 	% get range
-	[~, ~, id_center, range0] = getProperGrasp(gp10_w, gp20_w, grasps.range(:, grasp_id), q0, gp1o_w, gp2o_w, para, gripper_cone_width); 
-	[~, ~, ~,         rangef] = getProperGrasp(gp1f_w, gp2f_w, grasps.range(:, grasp_id), qf, gp1o_w, gp2o_w, para, gripper_cone_width); 
+	[~, ~, id_center, range0, qg0frame] = getProperGrasp(gp10_w, gp20_w, grasps.range(:, grasp_id), q0, gp1o_w, gp2o_w, para, gripper_cone_width); 
+	if ~isempty(qg0)
+		v  	   = gp10_w - gp20_w; v  = v/norm(v);
+		z0     = quatOnVec([0 0 1]', qg0frame);
+		z1     = quatOnVec([0 0 1]', qg0);
+		angqg0 = round(angBTVec(z0, z1, v, 1)*180/pi); % 0~360
+
+		angqg0_zone = circQuery(range0, angqg0);
+		range0      = circQuery(0*range0, angqg0, angqg0_zone);
+	end
+
+	[~, ~, ~,         rangef, qgfframe] = getProperGrasp(gp1f_w, gp2f_w, grasps.range(:, grasp_id), qf, gp1o_w, gp2o_w, para, gripper_cone_width); 
+	if ~isempty(qgf)
+		v 	   = gp1f_w - gp2f_w; v  = v/norm(v);
+		z0     = quatOnVec([0 0 1]', qgfframe);
+		z1     = quatOnVec([0 0 1]', qgf);
+		angqgf = round(angBTVec(z0, z1, v, 1)*180/pi); % 0~360
+
+		angqgf_zone = circQuery(rangef, angqgf);
+		rangef      = circQuery(0*range0, angqgf, angqgf_zone);
+	end
+
 	range_ = range0 & rangef;
 	if ~any(range_)
 		% no grasp available
@@ -82,6 +102,7 @@ end
 temp  = gp10_w - gp20_w;
 tempv = quatOnVec([1 0 0]', qgrasp0_w);
 assert( abs(angBTVec(temp, tempv)) < 1e-7);
+
 % if(angBTVec([0 0 1]', quatOnVec([0 0 1]', qgrasp0frame_w)) > para.GRIPPER_TILT_LIMIT)
 % 	flag = -3;
 % 	return;
@@ -292,28 +313,4 @@ end
 
 
 
-function ang = tiltedConeAng(cone_half_ang, tilted_ang)
-H = 1;
-R = tan(cone_half_ang)*H;
-r = tan(tilted_ang)*H;
-L = sqrt(R^2 + H^2);
-m = sqrt(r^2 + H^2);
-theta = asin(r/R);
-h = R*cos(theta);
 
-ang = sss2aaa(h, L, m);
-
-end
-
-
-function gripper_cone_width = getTiltedGripperCone(gp1_w, gp2_w, original_cone_width)
-[~, q_w]   = getProperGrasp(gp1_w, gp2_w); % measured in world frame
-z_w       = quatOnVec([0 0 1]', q_w); % z axis of p frame, measured in w frame
-tilted_ang = angBTVec([0 0 1]', z_w);
-if tilted_ang > original_cone_width
-    gripper_cone_width = [];
-	return;
-end
-gripper_cone_width = tiltedConeAng(original_cone_width, tilted_ang);
-
-end
