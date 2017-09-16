@@ -568,60 +568,64 @@ N_sample_per_object = 100;
 files = dir('../model/data/*.mat');
 Nobj  = length(files);
 
-pivoting.plans       = cell(1, Nobj);
-pivoting.scores      = cell(1, Nobj);
-pivoting.path_found  = [];
-pickplace.plans      = cell(1, Nobj);
-pickplace.scores     = cell(1, Nobj);
-pickplace.path_found = [];
+tilt_limit_array = [1:8]*10*pi/180;
 
-for i_obj = 3:Nobj
-	load(files(i_obj).name);
-	disp(['[Object #' num2str(i_obj) '] ---- ' files(i_obj).name ' ----']);
+for experiment = 1:length(tilt_limit_array)
+	para.GRIPPER_TILT_LIMIT          = 40*pi/180; % tilting angle tolerance
+	pivoting.plans       = cell(1, Nobj);
+	pivoting.scores      = cell(1, Nobj);
+	pivoting.path_found  = [];
+	pickplace.plans      = cell(1, Nobj);
+	pickplace.scores     = cell(1, Nobj);
+	pickplace.path_found = [];
 
-	pivoting.plans{i_obj}       = cell(1, N_sample_per_object);      
-	pivoting.scores{i_obj}      = cell(1, N_sample_per_object);     
-	pickplace.plans{i_obj}      = cell(1, N_sample_per_object);     
-	pickplace.scores{i_obj}     = cell(1, N_sample_per_object);    
+	for i_obj = 3:Nobj
+		load(files(i_obj).name);
+		disp(['[Object #' num2str(i_obj) '] ---- ' files(i_obj).name ' ----']);
 
-	pivoting_path_found  = zeros(1, N_sample_per_object);
-	pickplace_path_found = zeros(1, N_sample_per_object);
+		pivoting.plans{i_obj}       = cell(1, N_sample_per_object);      
+		pivoting.scores{i_obj}      = cell(1, N_sample_per_object);     
+		pickplace.plans{i_obj}      = cell(1, N_sample_per_object);     
+		pickplace.scores{i_obj}     = cell(1, N_sample_per_object);    
 
-	for p = 1:N_sample_per_object
-		while true
-			q0                = quatRand();
-			qf                = quatRand();
-			[grasp_id_0, qg0] = randPickGrasp(q0);
-			[grasp_id_f, qgf] = randPickGrasp(qf);
-			if (~isempty(grasp_id_0))&&(~isempty(grasp_id_f))
-				break;
+		pivoting_path_found  = zeros(1, N_sample_per_object);
+		pickplace_path_found = zeros(1, N_sample_per_object);
+
+		for p = 1:N_sample_per_object
+			while true
+				q0                = quatRand();
+				qf                = quatRand();
+				[grasp_id_0, qg0] = randPickGrasp(q0);
+				[grasp_id_f, qgf] = randPickGrasp(qf);
+				if (~isempty(grasp_id_0))&&(~isempty(grasp_id_f))
+					break;
+				end
 			end
+
+			[pivoting_path_found(p), pivoting.plans{i_obj}{p}]   = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f, 'pivoting');
+			[pickplace_path_found(p), pickplace.plans{i_obj}{p}] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f, 'pickplace');
+
+			if pickplace_path_found(p) && ~pivoting_path_found(p)
+	% 			if length(pickplace.plans{i_obj}{p}.qobj) <= 1
+					warning('weird');
+	% 			end
+			end
+
+			pivoting.scores{i_obj}{p}  = evalPlan(pivoting.plans{i_obj}{p});
+			pickplace.scores{i_obj}{p} = evalPlan(pickplace.plans{i_obj}{p});
+
+			disp(['		Problem #' num2str(p) ' of ' num2str(N_sample_per_object) ', Pivoting: ' num2str(pivoting_path_found(p)) ', P&P: ' num2str(pickplace_path_found(p))]);
 		end
 
-		[pivoting_path_found(p), pivoting.plans{i_obj}{p}]   = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f, 'pivoting');
-		[pickplace_path_found(p), pickplace.plans{i_obj}{p}] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f, 'pickplace');
-
-		if pickplace_path_found(p) && ~pivoting_path_found(p)
-% 			if length(pickplace.plans{i_obj}{p}.qobj) <= 1
-				warning('weird');
-% 			end
-		end
-
-		pivoting.scores{i_obj}{p}  = evalPlan(pivoting.plans{i_obj}{p});
-		pickplace.scores{i_obj}{p} = evalPlan(pickplace.plans{i_obj}{p});
-
-		disp(['		Problem #' num2str(p) ' of ' num2str(N_sample_per_object) ', Pivoting: ' num2str(pivoting_path_found(p)) ', P&P: ' num2str(pickplace_path_found(p))]);
+		pivoting.path_found  = [pivoting.path_found pivoting_path_found];
+		pickplace.path_found = [pickplace.path_found pickplace_path_found];
 	end
 
-	pivoting.path_found  = [pivoting.path_found pivoting_path_found];
-	pickplace.path_found = [pickplace.path_found pickplace_path_found];
-end
+    full_path = ['../model/results/comparison' num2str(experiment) '.mat'];
+	save(full_path, 'pivoting', 'pickplace');
+	set(handles.BTN_show_results, 'Enable', 'on');
 
-save '../model/results/comparison2.mat' pivoting pickplace;
-set(handles.BTN_show_results, 'Enable', 'on');
-
-
-
+end % end all experiments
 
 % --- Executes on button press in BTN_show_results2.
 function BTN_show_results2_Callback(hObject, eventdata, handles)
