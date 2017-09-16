@@ -602,9 +602,9 @@ for i_obj = 3:Nobj
 		[pickplace_path_found(p), pickplace.plans{i_obj}{p}] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f, 'pickplace');
 
 		if pickplace_path_found(p) && ~pivoting_path_found(p)
-			if length(pickplace.plans{i_obj}{p}.qobj) <= 1
+% 			if length(pickplace.plans{i_obj}{p}.qobj) <= 1
 				warning('weird');
-			end
+% 			end
 		end
 
 		pivoting.scores{i_obj}{p}  = evalPlan(pivoting.plans{i_obj}{p});
