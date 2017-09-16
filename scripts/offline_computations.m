@@ -59,7 +59,7 @@ for i = 1:length(file_dir)
 %	use the following line to load object/gripper file
 	load(full_path); % only use object file
 
-    [grasps, fgraph]               = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para);
+    [grasps, fgraph] = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para);
 	
 	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps', 'gripper');
 % 	return;
@@ -76,5 +76,5 @@ end
 % 	[~, pgraph_amended, ~, ~] = getObject(para, filename);
 %     drawnow
 % 	pgraph.err_bound          = pgraph_amended.err_bound;
-% 	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps');
+% % 	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps');
 % end
