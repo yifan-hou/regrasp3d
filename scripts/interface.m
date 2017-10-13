@@ -570,8 +570,9 @@ Nobj  = length(files);
 
 tilt_limit_array = [1:8]*10*pi/180;
 
-for experiment = 1:length(tilt_limit_array)
-	para.GRIPPER_TILT_LIMIT          = 40*pi/180; % tilting angle tolerance
+for experiment = 6:6 %length(tilt_limit_array)
+    tic;
+	para.GRIPPER_TILT_LIMIT          = tilt_limit_array(experiment); % tilting angle tolerance
 	pivoting.plans       = cell(1, Nobj);
 	pivoting.scores      = cell(1, Nobj);
 	pivoting.path_found  = [];
@@ -579,7 +580,7 @@ for experiment = 1:length(tilt_limit_array)
 	pickplace.scores     = cell(1, Nobj);
 	pickplace.path_found = [];
 
-	for i_obj = 3:Nobj
+	for i_obj = 2:Nobj
 		load(files(i_obj).name);
 		disp(['[Object #' num2str(i_obj) '] ---- ' files(i_obj).name ' ----']);
 
@@ -603,23 +604,22 @@ for experiment = 1:length(tilt_limit_array)
 			end
 
 			[pivoting_path_found(p), pivoting.plans{i_obj}{p}]   = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f, 'pivoting');
-			[pickplace_path_found(p), pickplace.plans{i_obj}{p}] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f, 'pickplace');
+% 			[pickplace_path_found(p), pickplace.plans{i_obj}{p}] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f, 'pickplace');
 
-			if pickplace_path_found(p) && ~pivoting_path_found(p)
-	% 			if length(pickplace.plans{i_obj}{p}.qobj) <= 1
-					warning('weird');
-	% 			end
-			end
+% 			if pickplace_path_found(p) && ~pivoting_path_found(p)
+% 					warning('weird');
+% 			end
 
 			pivoting.scores{i_obj}{p}  = evalPlan(pivoting.plans{i_obj}{p});
-			pickplace.scores{i_obj}{p} = evalPlan(pickplace.plans{i_obj}{p});
+% 			pickplace.scores{i_obj}{p} = evalPlan(pickplace.plans{i_obj}{p});
 
-			disp(['		Problem #' num2str(p) ' of ' num2str(N_sample_per_object) ', Pivoting: ' num2str(pivoting_path_found(p)) ', P&P: ' num2str(pickplace_path_found(p))]);
+% 			disp(['		Problem #' num2str(p) ' of ' num2str(N_sample_per_object) ', Pivoting: ' num2str(pivoting_path_found(p)) ', P&P: ' num2str(pickplace_path_found(p))]);
 		end
 
 		pivoting.path_found  = [pivoting.path_found pivoting_path_found];
-		pickplace.path_found = [pickplace.path_found pickplace_path_found];
-	end
+% 		pickplace.path_found = [pickplace.path_found pickplace_path_found];
+    end
+    toc; return;
 
     full_path = ['../model/results/comparison' num2str(experiment) '.mat'];
 	save(full_path, 'pivoting', 'pickplace');
@@ -633,7 +633,7 @@ function BTN_show_results2_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-load 'comparison2.mat'
+load 'comparison1.mat'
 clc;
 
 N                 = length(pivoting.path_found);
