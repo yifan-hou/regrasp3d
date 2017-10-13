@@ -131,6 +131,8 @@ end
 % Plot the object to GUI
 plotObject(mesh, handles.AX_initial);
 plotObject(mesh, handles.AX_final);
+plotObject(mesh, 2); % temporary 
+axis off
 rotate3d on;
 
 q0 = [1 0 0 0]';
@@ -166,8 +168,8 @@ if get(handles.CB_auto_graspf, 'Value')
 end
 
 para.printing = true;
-method = 'pickplace';
-% method = 'pivoting';
+% method = 'pickplace';
+method = 'pivoting';
 % load debug
 [path_found, plan_3d] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f, method);
 
@@ -195,7 +197,8 @@ function BTN_animate_Callback(hObject, eventdata, handles)
 global path_found plan_3d
 
 if path_found
-	animatePlan(handles.AX_animation, plan_3d);
+	animatePlan(5, plan_3d);
+	% animatePlan(handles.AX_animation, plan_3d);
 end
 
 

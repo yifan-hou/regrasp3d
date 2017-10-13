@@ -1,120 +1,85 @@
-load debug1
-qi  = quatSlerp(q_now, qf, t);
-
-ang_tol = angBTquat(q_now, qf);
-N = length(t);
-ang = zeros(N,1);
-for i = 1:N-1
-	ang(i) = angBTquat(qi(:,i), qi(:,i+1));
-end
-disp(ang_tol)
-disp(ang);
-disp(sum(ang));
-return
-
-
-
-
-
-
-global para fgraph pgraph mesh mesh_s grasps gripper q0 qf
 clc;
-% -----------------------------------------------
-% 		Offline-computation
-% -----------------------------------------------
-para.GRIPPER_TILT_LIMIT = 40*pi/180; % tilting angle tolerance
-para.GRIPPER_Z_LIMIT    = 0.2; % finger position limit
-% friction between object and  ground
-para.MU = 0.5;
-% number of grasp pos samplings
-para.NGS = 5; 
-% grasp axis tolerance
-para.ANGLE_TOL = 0.1; % rad
-para.COM_DIST_LIMIT = 0.8; % meter
-% shape of gripper(for collision checking)
-% para.gripper_shape = getGripper();
-para.PIVOTABLE_CHECK_GRANULARITY = 1*pi/180; % 1 sample every 1 degree
 
-% Popups 
-para.showObject             = false; % show object and the simplified object
-para.showObject_id          = [1 2 3];
-para.showAllGraspSamples    = false;
-para.showAllGraspSamples_id = 1;
-para.showCheckedGrasp       = false;
-para.showCheckedGrasp_id    = 3;
-para.showProblem            = false;
-para.showProblem_id         = [1 2 3];
-para.show2Dproblem          = false;
-para.show2Dproblem_id       = 4;
+NFound = [174	2;
+		 337	41;
+		 611	173;
+		 671	363;
+		 713	500;
+		 725	610;
+		 768	695;
+		 749	741]';
+Extime = [41.4655		50;
+		98.4777		82.6829;
+		130.9656		88.8844;
+		131.1773		95.4077;
+		128.6536		100.198;
+		130.9807		102.9836;
+		131.8997		100.8173;
+		136.1816		103.5398]';
 
-% get object mesh
-filename = 'planefrontstay.stl';
-% filename = 'sandpart2.stl';
-[fgraph, pgraph, mesh, mesh_s] = getObject(para, filename);
-gripper = getGripper();
+total_rotation = [3.2699		4.3241;
+				6.8412		7.7307;
+				8.7031		8.1018;
+				8.8678		8.6221;
+				9.0394		8.8962;
+				9.2327		9.0493;
+				9.3738		8.9722;
+				9.7076		9.1904]';
 
+total_translation = [1.1092		0.83562;
+					2.2269		1.6941;
+					2.5971		1.6583;
+					2.488		1.9842;
+					2.3786		2.084;
+					2.2419		2.0285;
+					2.1997		2.0344;
+					2.2895		2.1084]';
 
-% calculate grasps, and contact mode graph
-[grasps, fgraph] = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para);
-
-q0 = [1 0 0 0]';
-qf = [1 0 0 0]';
-
-disp('[Load Model] Model is loaded.');
-
-
-
-
-return;
+NRegrasp = [1.1552		1.5;
+			1.9674		2.7561;
+			2.198		2.6069;
+			2.1028		2.708;
+			2.1262		2.62;
+			2.0993		2.5639;
+			2.125		2.4647;
+			2.1535		2.4494]';
 
 
+% NFound: 677	650
+% Total rotation: 8.6302		8.9874
+% Total translation: 1.9471		2.0286
+% # of regrasp: 1.9338		2.4169
 
+% 2x8
+tilt_angle = [1:8]*10;
 
-clfAll;clear;clc;
+blue   = [49,130,189]/255;
+orange = [230,85,13]/255;
 
-addpath ../grasp
-addpath ../model
-para.GRIPPER_TILT_LIMIT = 40*pi/180; % tilting angle tolerance
-para.GRIPPER_Z_LIMIT    = 0.2; % finger position limit
-% friction between object and  ground
-para.MU = 0.5;
-% number of grasp pos samplings
-para.NGS = 100; 
-% grasp axis tolerance
-para.ANGLE_TOL = 0.1; % rad
-para.COM_DIST_LIMIT = 0.8; % meter
-% shape of gripper(for collision checking)
-% para.gripper_shape = getGripper();
-para.GOALSAMPLEDENSITY2D         = 15*pi/180; % 1 sample every 5 degree
-para.PIVOTABLE_CHECK_GRANULARITY = 1*pi/180; % 1 sample every 1 degree
+figure(1);clf(1);hold on;
+plot(tilt_angle, NFound(1,:),'.-', 'Color', blue, 'markersize',15, 'linewidth', 1.5);
+plot(tilt_angle, NFound(2,:),'.-', 'Color', orange, 'markersize',15, 'linewidth', 1.5);
+ylabel('Number')
+legend('Pivoting', 'Pick&Place');
+legend('boxoff');
 
-% Popups 
-para.showObject             = false; % show object and the simplified object
-para.showObject_id          = [1 2 3];
-para.showAllGraspSamples    = false;
-para.showAllGraspSamples_id = 1;
-para.showCheckedGrasp       = false;
-para.showCheckedGrasp_id    = 3;
-para.showProblem            = false;
-para.showProblem_id         = [1 2 3];
-para.show2Dproblem          = false;
-para.show2Dproblem_id       = 4;
+figure(2);clf(2);hold on;
+plot(tilt_angle, total_rotation(1,:),'.-', 'Color', blue, 'markersize',15, 'linewidth', 1.5);
+plot(tilt_angle, total_rotation(2,:),'.-', 'Color', orange, 'markersize',15, 'linewidth', 1.5);
+ylabel('Angle (rad)')
+legend('Pivoting', 'Pick&Place');
+legend('boxoff');
 
-% get object mesh
-filename = 'planefrontstay.stl';
+figure(3);clf(3);hold on;
+plot(tilt_angle, total_translation(1,:),'.-', 'Color', blue, 'markersize',15, 'linewidth', 1.5);
+plot(tilt_angle, total_translation(2,:),'.-', 'Color', orange, 'markersize',15, 'linewidth', 1.5);
+ylabel('Distance (m)')
+legend('Pivoting', 'Pick&Place');
+legend('boxoff');
 
-
-[fgraph, pgraph, mesh] = getObject(para, filename);
-gripper                = getGripper();
-
-gp              = [0.5 -0.5; 0 0; 0.5 0.5];
-
-qgrasp = getProperGrasp(gp(:,1), gp(:,2)); 
-
-lookuptable 		    = getIntersectionLookUpTable();
-fingertip_plus.vertices = bsxfun(@plus, quatOnVec(gripper.vertices{1}, qgrasp), gp(:, 1))';
-fingertip_plus.faces    = gripper.faces{1};
-[~, surf1]              = SurfaceIntersectionMex(mesh, fingertip_plus, lookuptable);
-
-disp('Done');
-
+figure(4);clf(4);hold on;
+plot(tilt_angle, NRegrasp(1,:),'.-', 'Color', blue, 'markersize',15, 'linewidth', 1.5);
+plot(tilt_angle, NRegrasp(2,:),'.-', 'Color', orange, 'markersize',15, 'linewidth', 1.5);
+ylabel('Number')
+legend('Pivoting', 'Pick&Place');
+legend('boxoff');

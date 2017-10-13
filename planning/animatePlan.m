@@ -35,9 +35,40 @@ handles_object.cp      = plot3(cp_w(1,:), cp_w(2,:), cp_w(3,:), '.k', 'markersiz
 handles_object.com     = plot3(com_w(1), com_w(2), com_w(3), 'r*', 'markersize', 8);
 handles_object.gravity = plot3(com_w(1)+[0 0], com_w(2)+[0 0], com_w(3)+[0 -0.4], 'r-', 'linewidth', 2);
 
+% table
+table.vertices      = zeros(3,8);
+table.vertices(:,1) = [-1 -1 0]';
+table.vertices(:,2) = [1  -1 0]';
+table.vertices(:,3) = [1  -1 -0.1]';
+table.vertices(:,4) = [-1 -1 -0.1]';
+table.vertices(:,5) = [1   1 0]';
+table.vertices(:,6) = [-1  1 0]';
+table.vertices(:,7) = [-1  1 -0.1]';
+table.vertices(:,8) = [1   1 -0.1]';
+table.vertices = table.vertices';
+table.faces = [1 4 3;
+	   1 2 3;
+	   6 1 2;
+	   6 2 5;
+	   6 8 5;
+	   6 8 7;
+	   3 7 4;
+	   3 7 8;
+	   1 7 6;
+	   1 7 4;
+	   2 8 5;
+	   2 8 3];
+patch('Faces', table.faces, ...
+				  'Vertices', table.vertices, ...
+				  'FaceColor',       [0.6 0.8 0.4], ...
+			      'EdgeColor',       'none',        ...
+			      'FaceLighting',    'gouraud',     ...
+			      'AmbientStrength', 0.15);
+
 xlabel('X'); ylabel('Y'); zlabel('Z');
 axis([-1 1 -1 1 0 2]);
 view(-43, 27);
+axis off
 
 % --------------------------------------
 % 	Begin Animation
@@ -64,7 +95,7 @@ for p = 1:NP
 		end
 
 		updatePlot(qobj, qgrp, gp1, gp2, trans, gripper, mesh.COM, mesh.vertices', handles_object, handles_gripper);
-        pause(0.1);
+%         pause(0.1);
 	end
 	pause(0.5);
 end
@@ -103,5 +134,6 @@ function updatePlot(qobj, qgp0, gp1, gp2, trans, gripper, com, points, handles_o
 
 	% axis([com_(1)-1 com_(1)+1 com_(2)-1 com_(2)+1 com_(3)-1 com_(3)+1]);
 	% axis equal;
+    axis off
 	drawnow;
 end
