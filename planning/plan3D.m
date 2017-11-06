@@ -32,7 +32,7 @@ for p = 1:length(plan_2d)
 	gp10_w    = quatOnVec(gp1o_w, q0);
 	gp20_w    = quatOnVec(gp2o_w, q0);
 	qgrasp0_w = plan_2d{p}.qgrp0;
-	% getProperGrasp(gp10_w, gp20_w); % grasp frame for q0, under world coordinate
+	% getProperGraspSimple(gp10_w, gp20_w); % grasp frame for q0, under world coordinate
 	gpc_xy    = (gp10_w(1:2) + gp20_w(1:2))/2 + xy_offset; % only x,y are useful
 
 	% --------------------------------------

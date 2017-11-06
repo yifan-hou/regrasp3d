@@ -304,12 +304,13 @@ else
     grasp_id_0          = zeros(size(all_grasps));
     grasp_id_0(ids(id)) = 1;
 	assert(sum(grasp_id_0) == 1);
-	grasp_id = find(grasp_id_0);
-	gp1o_w   = grasps.points(:, grasp_id, 1);
-	gp2o_w   = grasps.points(:, grasp_id, 2);
-	gp10_w   = quatOnVec(gp1o_w, q0);
-	gp20_w   = quatOnVec(gp2o_w, q0);
-	qg0      = getProperGrasp(gp10_w, gp20_w, grasps.range(:, grasp_id), q0, gp1o_w, gp2o_w, para); % grasp frame for q0, under world coordinate
+	grasp_id           = find(grasp_id_0);
+	gp1o_w             = grasps.points(:, grasp_id, 1);
+	gp2o_w             = grasps.points(:, grasp_id, 2);
+	gp10_w             = quatOnVec(gp1o_w, q0);
+	gp20_w             = quatOnVec(gp2o_w, q0);
+	gripper_cone_width = getTiltedGripperCone(grasp_id, q0, para.GRIPPER_TILT_LIMIT);
+	qg0                = getProperGrasp(grasp_id, q0, gripper_cone_width, false);
 	
 	plotObject(mesh, handles.AX_initial, q0);
 	plotGripper(handles.AX_initial, gripper, q0, [gp10_w gp20_w], qg0);
@@ -343,12 +344,13 @@ else
     grasp_id_f(ids(id)) = 1;
     
 	assert(sum(grasp_id_f) == 1);
-	grasp_id = find(grasp_id_f);
-	gp1o_w   = grasps.points(:, grasp_id, 1);
-	gp2o_w   = grasps.points(:, grasp_id, 2);
-	gp1f_w   = quatOnVec(gp1o_w, qf);
-	gp2f_w   = quatOnVec(gp2o_w, qf);
-	qgf      = getProperGrasp(gp1f_w, gp2f_w, grasps.range(:, grasp_id), qf, gp1o_w, gp2o_w, para); % grasp frame for q0, under world coordinate
+	grasp_id           = find(grasp_id_f);
+	gp1o_w             = grasps.points(:, grasp_id, 1);
+	gp2o_w             = grasps.points(:, grasp_id, 2);
+	gp1f_w             = quatOnVec(gp1o_w, qf);
+	gp2f_w             = quatOnVec(gp2o_w, qf);
+	gripper_cone_width = getTiltedGripperCone(grasp_id, qf, para.GRIPPER_TILT_LIMIT);
+	qgf                = getProperGrasp(grasp_id, qf, gripper_cone_width, false);
 
 	plotObject(mesh, handles.AX_final, qf);
 	plotGripper(handles.AX_final, gripper, qf, [gp1f_w gp2f_w], qgf);
