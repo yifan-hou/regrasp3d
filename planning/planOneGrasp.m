@@ -62,7 +62,6 @@ if strcmp(method, 'pickplace')
 	qgrasp0_w = quatMTimes(aa2quat(ang, gp1o_w-gp2o_w), qg_ref);
 	qgrasp0_w = quatMTimes(q0, qgrasp0_w);
 
-
 	plan_2d.q0               = q0;
 	plan_2d.qp               = q0;
 	plan_2d.qf               = qf;

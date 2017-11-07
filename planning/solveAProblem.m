@@ -60,7 +60,6 @@ while true
 
 	path_q       = zeros(4, NP);
 	path_graspid = zeros(1, NP-1);
-	% path_qp      = zeros(4, NP-1);
 	plan_2d      = cell(1,  NP-1);
 
 	% motion planning for each edge on the path
