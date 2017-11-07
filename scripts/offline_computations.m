@@ -61,7 +61,7 @@ for i = 1:length(file_dir)
 
     [grasps, fgraph] = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para);
 	
-	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps', 'gripper');
+% 	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps', 'gripper');
 % 	return;
 end
 

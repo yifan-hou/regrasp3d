@@ -10,154 +10,117 @@
 %   qframe: the grasp frame
 %   id_center: id of current upright gripper direction in range0
 %   range_: same as range0, but all the angle outside of gripper_cone_width are set to 0
-function [qg, qframe, id_center, range_, qg0] = getProperGrasp(gp1, gp2, range0, q0, gp10, gp20, para, gripper_cone_width, randgrasp)
-v  = gp1 - gp2;
-v  = v/norm(v);
+function [qg, qframe, data] = getProperGrasp(grasp_id, qnow, gripper_cone_width, randgrasp)
+global grasps
 
-q1 = quatBTVec([1 0 0]', v);
+gp10 = grasps.points(:, grasp_id, 1);
+gp20 = grasps.points(:, grasp_id, 2);
 
-if abs(v(3)) < 1e-5
-    qg = q1;
-else
-    u1 = quatOnVec([0 1 0]', q1);
-    % u  = cross(v, [0 0 1]'); % wrong
-    u  = cross([0 0 1]', v);
+gp1 = quatOnVec(gp10, qnow);
+gp2 = quatOnVec(gp20, qnow);
 
-    if norm(u) < 1e-5
-        % grasp axis is vertical....
-        % qg should get rejected in planning anyway
-        qg = q1;
-    else
-        % get the rotation that rotates u1 to u
-        % then apply it to q1
-        qtemp = quatBTVec(u1, u);
-        qg    = quatMTimes(qtemp, q1);
-
-        % check, there are two u, one of them will turn gravity upwards 
-        g1 = quatOnVec([0 0 -1]', qg);
-        if g1(3) > 0
-        	% redo with -u
-            u     = -u;
-            qtemp = quatBTVec(u1, u);
-            qg    = quatMTimes(qtemp, q1);
-        end
-    end
-    
-end
-
-% % check:
-% v
-% quatOnVec([1 0 0]', qg)
-qframe = qg;
-
-if nargin < 3
-    return;
-end
-
+[qg, v] = getProperGraspSimple(gp1, gp2);
+qframe  = qg;
 
 % ------------------------------------------------
-%   Collision checking
+%   Find a feasible grasp pose 
+%   as close to qg as possible
+%       1. within cone width
+%       2. collision free
 % ------------------------------------------------
 % 1. calculate reference grasp in original pose
-qg0 = getProperGrasp(gp10, gp20);
+qg0 = getProperGraspSimple(gp10, gp20);
 
 % 2. rotate reference grasp to current frame
-qg0 = quatMTimes(q0, qg0);
+qg0 = quatMTimes(qnow, qg0);
 assert(angBTVec(quatOnVec([1 0 0]', qg0), v) < 1e-3);
 
 % 3. compare and find the angle 
 z0        = quatOnVec([0 0 1]', qg0);
 z1        = quatOnVec([0 0 1]', qg);
-ang       = round(angBTVec(z0, z1, v, 1)*180/pi); % 0~360
-id_center = ang;
-safe_zone = (ang - para.COLLISION_FREE_ANGLE_MARGIN):(ang + para.COLLISION_FREE_ANGLE_MARGIN);
+id_center = round(angBTVec(z0, z1, v, 1)*180/pi); % 0~360
 
-if nargin >= 8
-    % consider gripper cone width
+% --------------------------------------
+%   Get collision-free range within gripper cone width
+% --------------------------------------
 
-    % range 1: ok 0: collision
-    gripper_cone_width_deg = round(gripper_cone_width*180/pi);
-    if gripper_cone_width_deg < 2*para.COLLISION_FREE_ANGLE_MARGIN
-        % no solution
-        qg     = [];
-        range_ = 0*range0;
-        return;
-    end
+% range 1: ok 0: collision
+gripper_cone_width_deg = round(gripper_cone_width*180/pi);
 
-    cone_zone   = (ang - gripper_cone_width_deg):(ang + gripper_cone_width_deg);
-    range0_zone = circQuery(range0, cone_zone);
-    range_      = 0*range0;
-    range_      = circQuery(range_, cone_zone, range0_zone);
-    id_range    = find(range_);
-    start1      = strfind([0,range_'==1],[0 1]);
-    end1        = strfind([range_'==1,0],[1 0]);
-    range_width = end1 - start1 + 1;
-    % ans =
-    %      5     2
-    if isempty(id_range) || max(range_width) < 2*para.COLLISION_FREE_ANGLE_MARGIN+2
-        qg = [];
-        return;
-    end
+cone_zone   = (id_center - gripper_cone_width_deg):(id_center + gripper_cone_width_deg);
+range0_zone = circQuery(grasps.range(:, grasp_id), cone_zone);
+range_      = circQuery(zeros(size(grasps.range, 1), 1), cone_zone, range0_zone);
 
-    if nargin >= 9
-        while true
-            id_rand   = id_range(randi(length(id_range)));
-            safe_zone = id_rand - para.COLLISION_FREE_ANGLE_MARGIN : id_rand + para.COLLISION_FREE_ANGLE_MARGIN;
-            if all(circQuery(range_, safe_zone))
-                break;
-            end
+if nargout == 3
+    % some temporary variables useful to pick&place
+    data.id_center = id_center;
+    data.qg0       = qg0;
+    data.range     = range_;
+    return;
+end
+
+id_range    = find(range_);
+if isempty(id_range) 
+    qg = [];
+    return;
+end
+
+
+if randgrasp
+    % pick one randomly
+    while true
+        id_rand   = id_range(randi(length(id_range)));
+        if range_(id_rand)
+            break;
         end
-        displace = (id_rand - id_center)*pi/180;
-        qrot     = aa2quat(displace, v);
-        qg       = quatMTimes(qrot, qg);
     end
-    return;
-end
-
-
-% 4. check collision, find a collision free solution
-% move towards positive
-displace_pos = 0;
-while displace_pos < 180
-    safe_zone_displaced = safe_zone + displace_pos;
-    value_in_zone       = circQuery(range0, safe_zone_displaced);
-    if ~any( value_in_zone == 0)
-        % no collision!
-        break;
-    end
-    id_bad = find(value_in_zone == 0);
-    displace_pos = displace_pos + max(id_bad);
-end
-
-if displace_pos == 0
-    return;
-end
-
-% move towards negative
-displace_neg = 0;
-while displace_neg > -180
-    safe_zone_displaced = safe_zone + displace_neg;
-    value_in_zone       = circQuery(range0, safe_zone_displaced);
-    if ~any( value_in_zone == 0)
-        % no collision!
-        break;
-    end
-    id_bad       = find(value_in_zone == 0);
-    displace_neg = displace_neg - (length(safe_zone) - min(id_bad) + 1);
-end
-
-assert(min(displace_pos, abs(displace_neg)) < 180, 'This grasp has no solution!');
-
-% rotate the grasp frame
-if displace_pos < abs(displace_neg)
-    displace = displace_pos*pi/180;
+    displace = (id_rand - id_center)*pi/180;
+    qrot     = aa2quat(displace, v);
+    qg       = quatMTimes(qrot, qg);
 else
-    displace = displace_neg*pi/180;
+    % choose the one closest to qg
+
+    % 4. check collision, find a collision free solution
+    % move towards positive
+    displace_pos = 0;
+    while displace_pos < 180
+        safe_zone_displaced = id_center + displace_pos;
+        value_in_zone       = circQuery(range_, safe_zone_displaced);
+        if value_in_zone
+            % no collision!
+            break;
+        end
+        displace_pos = displace_pos + 1;
+    end
+
+    if displace_pos == 0
+        return;
+    end
+
+    % move towards negative
+    displace_neg = 0;
+    while displace_neg > -180
+        safe_zone_displaced = id_center + displace_neg;
+        value_in_zone       = circQuery(range_, safe_zone_displaced);
+        if value_in_zone
+            % no collision!
+            break;
+        end
+        displace_neg = displace_neg - 1;
+    end
+
+    assert(min(displace_pos, abs(displace_neg)) < 180, 'This grasp has no solution!');
+
+    % rotate the grasp frame
+    if displace_pos < abs(displace_neg)
+        displace = displace_pos*pi/180;
+    else
+        displace = displace_neg*pi/180;
+    end
+
+    qrot = aa2quat(displace, v);
+    qg   = quatMTimes(qrot, qg);
 end
-
-qrot = aa2quat(displace, v);
-qg   = quatMTimes(qrot, qg);
-
 
 
 

@@ -19,7 +19,7 @@ if norm(gp(:,1) - gp(:,2)) < 1e-3
     return;
 end
 
-qgrasp = getProperGrasp(gp(:,1), gp(:,2)); 
+qgrasp = getProperGraspSimple(gp(:,1), gp(:,2)); 
 
 % open finger a little big when checking fingertip,
 % in case the grasp is tilting
@@ -107,23 +107,15 @@ for i = 1:360
 	end	
 end % end for
 
-% reject small range grasp points
+% shrink feasible_range for robustness 
 start1      = strfind([0, feasible_range==1],[0 1]);
 end1        = strfind([feasible_range==1,0],[1 0]);
 length_of_1 = end1 - start1 + 1;
 
-if ~any(length_of_1 >= 2*para.COLLISION_FREE_ANGLE_MARGIN)
-	feasible_range = [];
-else
-	for i = 1:length(length_of_1)
-		if length_of_1(i) < (2*para.COLLISION_FREE_ANGLE_MARGIN+1)
-			% useless feasible range
-			feasible_range(start1(i):end1(i)) = 0;
-		end
-	end
+for i = 1:length(length_of_1)
+	feasible_range = circQuery(feasible_range, start1:start1+para.COLLISION_FREE_ANGLE_MARGIN-1, 0);
+	feasible_range = circQuery(feasible_range, end1-para.COLLISION_FREE_ANGLE_MARGIN+1:end1, 0);
 end
-
-
 
 end % end function
 

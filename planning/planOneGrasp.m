@@ -1,8 +1,9 @@
 % do planning given:
-% 	q0, qf: initial/final object pose
 % 	grasp_id: a specific grasp pos
+% 	q0, qf: initial/final object pose
 % 	qg0, qgf: initial/final grasp pose (could be empty)
-function [plan_2d, flag] = planOneGrasp(mesh, grasps, grasp_id, q0, qf, qg0, qgf, pgraph, method, para )
+function [plan_2d, flag] = planOneGrasp(grasp_id, q0, qf, qg0, qgf)
+global mesh grasps pgraph para
 plan_2d = []; 
 
 % -----------------------------------------
@@ -18,98 +19,44 @@ gp20_w = quatOnVec(gp2o_w, q0);
 gp1f_w = quatOnVec(gp1o_w, qf);
 gp2f_w = quatOnVec(gp2o_w, qf);
 
-if strcmp(method, 'pickplace')
-	gripper_cone_width = getTiltedGripperCone(gp10_w, gp20_w, para.GRIPPER_TILT_LIMIT);
-	if isempty(gripper_cone_width)
-	    flag = -3;
-		return;
-	end
-
-	% get range
-	[~, ~, id_center, range0, qg0frame] = getProperGrasp(gp10_w, gp20_w, grasps.range(:, grasp_id), q0, gp1o_w, gp2o_w, para, gripper_cone_width); 
-	if ~isempty(qg0)
-		v  	   = gp10_w - gp20_w; v  = v/norm(v);
-		z0     = quatOnVec([0 0 1]', qg0frame);
-		z1     = quatOnVec([0 0 1]', qg0);
-		angqg0 = round(angBTVec(z0, z1, v, 1)*180/pi); % 0~360
-
-		angqg0_zone = circQuery(range0, angqg0);
-		range0      = circQuery(0*range0, angqg0, angqg0_zone);
-	end
-
-	[~, ~, ~,         rangef, qgfframe] = getProperGrasp(gp1f_w, gp2f_w, grasps.range(:, grasp_id), qf, gp1o_w, gp2o_w, para, gripper_cone_width); 
-	if ~isempty(qgf)
-		v 	   = gp1f_w - gp2f_w; v  = v/norm(v);
-		z0     = quatOnVec([0 0 1]', qgfframe);
-		z1     = quatOnVec([0 0 1]', qgf);
-		angqgf = round(angBTVec(z0, z1, v, 1)*180/pi); % 0~360
-
-		angqgf_zone = circQuery(rangef, angqgf);
-		rangef      = circQuery(0*range0, angqgf, angqgf_zone);
-	end
-
-	range_ = range0 & rangef;
-	if ~any(range_)
-		% no grasp available
-		flag = -3;
-		return;
-	end
-
-	id1       = find(range_);
-	[~, id2]  = min(abs(id1 - id_center));
-	ang       = id1(id2)*pi/180;
-	qg_ref    = getProperGrasp(gp1o_w, gp2o_w);
-	qgrasp0_w = quatMTimes(aa2quat(ang, gp1o_w-gp2o_w), qg_ref);
-	qgrasp0_w = quatMTimes(q0, qgrasp0_w);
-
-	plan_2d.q0               = q0;
-	plan_2d.qp               = q0;
-	plan_2d.qf               = qf;
-	plan_2d.grasp_id         = grasp_id;
-	plan_2d.qgrp0            = qgrasp0_w;
-	plan_2d.obj_motion_diff  = 0;
-	plan_2d.grp_motion_diff  = 0;
-	plan_2d.rtype            = 0;
-	plan_2d.dir              = 1;
-	plan_2d.obj_sliding_acc  = 0;
-	plan_2d.obj_sliding_type = 1;
-
-	flag = 1;
+% ----------------------------------------
+% 	Pick initial & final grasps
+% 	Calculate gripper_cone_width for q0 and qf
+% ----------------------------------------
+gripper_cone_width0 = getTiltedGripperCone(grasp_id, q0, para.GRIPPER_TILT_LIMIT);
+gripper_cone_widthf = getTiltedGripperCone(grasp_id, qf, para.GRIPPER_TILT_LIMIT);
+if isempty(gripper_cone_width0)
+    flag = -3;
+	return;
+end
+if isempty(gripper_cone_widthf)
+    flag = -3;
 	return;
 end
 
 
 if isempty(qg0)
 	% grasp frame for q0, under world coordinate
-	[qgrasp0_w, qgrasp0frame_w] = getProperGrasp(gp10_w, gp20_w, grasps.range(:, grasp_id), q0, gp1o_w, gp2o_w, para); 
+	[qgrasp0_w, qgrasp0frame_w] = getProperGrasp(grasp_id, q0, gripper_cone_width0, false); 
 else
 	% grasp frame for q0, under world coordinate
-	[~, qgrasp0frame_w] = getProperGrasp(gp10_w, gp20_w, grasps.range(:, grasp_id), q0, gp1o_w, gp2o_w, para); 
-	qgrasp0_w           = qg0;
+	qgrasp0frame_w = getProperGraspSimple(gp10_w, gp20_w);
+	qgrasp0_w      = qg0;
 end
 
 if isempty(qgf)
 	% grasp frame for qf, under world coordinate
-	[qgraspf_w, qgraspfframe_w] = getProperGrasp(gp1f_w, gp2f_w, grasps.range(:, grasp_id), qf, gp1o_w, gp2o_w, para); 
+	[qgraspf_w, qgraspfframe_w] = getProperGrasp(grasp_id, qf, gripper_cone_widthf, false);
 else
 	% grasp frame for qf, under world coordinate
-	[~, qgraspfframe_w] = getProperGrasp(gp1f_w, gp2f_w, grasps.range(:, grasp_id), qf, gp1o_w, gp2o_w, para); 
-	qgraspf_w           = qgf;
+	qgraspfframe_w = getProperGraspSimple(gp1f_w, gp2f_w);
+	qgraspf_w      = qgf;
 end
 
 % check grasp frame
 temp  = gp10_w - gp20_w;
 tempv = quatOnVec([1 0 0]', qgrasp0_w);
 assert( abs(angBTVec(temp, tempv)) < 1e-7);
-
-if(angBTVec([0 0 1]', quatOnVec([0 0 1]', qgrasp0_w)) > para.GRIPPER_TILT_LIMIT)
-	flag = -3;
-	return;
-end
-if(angBTVec([0 0 1]', quatOnVec([0 0 1]', qgraspf_w)) > para.GRIPPER_TILT_LIMIT)
-	flag = -3;
-	return;
-end
 
 % -----------------------------------------
 % 	Find out the slice of collision-free range
@@ -124,20 +71,20 @@ collision_free_range = grasps.range(:, grasp_id);
 collision_free_range = singleOutSFRange(collision_free_range, init_sf_id);
 assert(circQuery(collision_free_range, init_sf_id) == 1);
 
-% roll - pivot - roll
-% sample a few orientations for pivoting.
-qp = quatSlerp(q0, qf, 0.0); % todo: do clever sampling
 
 % ----------------------------------------------
 % 	Rotate grasps to qp
 % ----------------------------------------------
-gp1p_w    = quatOnVec(gp1o_w, qp);
-gp2p_w    = quatOnVec(gp2o_w, qp);
-[~, qP_w] = getProperGrasp(gp1p_w, gp2p_w); % p frame, measured in world frame
+% roll - pivot - roll
+% sample a few orientations for pivoting.
+qp     = quatSlerp(q0, qf, 0.0); % todo: do clever sampling
+gp1p_w = quatOnVec(gp1o_w, qp);
+gp2p_w = quatOnVec(gp2o_w, qp);
+qP_w   = getProperGraspSimple(gp1p_w, gp2p_w); % p frame, measured in world frame
 
 % calculate the gripper motion constraints for 2D problem
 zP_w               = quatOnVec([0 0 1]', qP_w); % z axis of p frame, measured in w frame
-gripper_cone_width = getTiltedGripperCone(gp1p_w, gp2p_w, para.GRIPPER_TILT_LIMIT);
+gripper_cone_width = getTiltedGripperCone(grasp_id, qp, para.GRIPPER_TILT_LIMIT);
 if isempty(gripper_cone_width)
     flag = -3;
 	return;
@@ -190,11 +137,6 @@ Rp_2d  			  = [0 1 0;
 				     0 0 1;
 				     1 0 0];
 gravity_2d        = Rp_2d*gravity_P; 
-grasp0pz_2d       = Rp_2d*grasp0pz_P; 
-graspfpz_2d       = Rp_2d*graspfpz_P; 
-COMp_2d           = Rp_2d*COMp_P; 
-pointsp_2d        = Rp_2d*pointsp_P; 
-gpp_2d            = Rp_2d*gpp_P;
 Rw_2d             = Rp_2d*Rw_P;
 
 % -----------------------------------------
@@ -202,12 +144,12 @@ Rw_2d             = Rp_2d*Rw_P;
 % 	(Rotate gravity to points down)
 % -----------------------------------------
 R2d_pro     = matBTVec([gravity_2d(1:2); 0], [0 -1 0]');
+init_pro    = R2d_pro*Rp_2d*grasp0pz_P;  % init(3) should = 0
+goal_pro    = R2d_pro*Rp_2d*graspfpz_P;  % goal(3) should = 0
+COMp_pro    = R2d_pro*Rp_2d*COMp_P;
+pointsp_pro = R2d_pro*Rp_2d*pointsp_P;
+gpp_pro     = R2d_pro*Rp_2d*gpp_P;
 gravity_pro = R2d_pro*gravity_2d; % should be [0 -1 ?]
-pointsp_pro = R2d_pro*pointsp_2d;
-gpp_pro     = R2d_pro*gpp_2d;
-COMp_pro    = R2d_pro*COMp_2d;
-goal_pro    = R2d_pro*graspfpz_2d;  % goal(3) should = 0
-init_pro    = R2d_pro*grasp0pz_2d;  % init(3) should = 0
 assert(abs(init_pro(3)) < 1e-3);
 assert(abs(goal_pro(3)) < 1e-3);
 
@@ -225,7 +167,6 @@ end
 
 init_grasp_ang = angBTVec([0 1 0]', init_pro, [0 0 1]');
 cf_zero_id     = init_sf_id - round(180/pi*init_grasp_ang);
-
 
 if para.show2Dproblem
     [~, cp_id] = max(gravity_pro'*pointsp_pro); % id of contact point in points list
@@ -285,13 +226,11 @@ for rot_dir = 1:2
 	gravity_pro_proj    = gravity_pro;
 	gravity_pro_proj(3) = 0;
     assert(abs(angBTVec(-gravity_pro_proj, goal_final_pro, n) + object_plan_2d.ang2edge - gripper_cone_width) < 1e-4);
-% 	assert(abs(pi - angBTVec(goal_grasp_2d(1:2), gravity_2d(1:2)) + object_plan_2d.ang2edge - gripper_cone_width) < 1e-4);
 
 	% Check 2: p frame: move goal to edge of cone
 	n_P          = gp1p_P - gp2p_P; n_P = n_P/norm(n_P);
 	n_P          = -n_P*dir_pro;
 	goal_final_p = quatOnVec(graspfpz_P, aa2quat(objang, n_P));
-	% assert(abs(pi - angBTVec(goal_grasp_p(2:3), gravity_P(2:3)) + object_plan_2d.ang2edge - gripper_cone_width) < 1e-4);
 	gravity_p_proj    = gravity_P;
 	gravity_p_proj(1) = 0;
     assert(abs(angBTVec(-gravity_p_proj, goal_final_p, n_P) + object_plan_2d.ang2edge - gripper_cone_width) < 1e-4);

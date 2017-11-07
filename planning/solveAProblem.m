@@ -84,7 +84,11 @@ while true
 		for i = 1:length(id_common)
 			path_graspid(p) = id_common(i);
 
-			[plan_2d_temp, flag] = planOneGrasp(mesh, grasps, id_common(i), path_q(:,p), path_q(:,p+1), qg0_p, qgf_p, pgraph, method, para);
+			if strcmp(method, 'pickplace')
+				[plan_2d_temp, flag] = planOneGraspPickPlace(id_common(i), path_q(:,p), path_q(:,p+1), qg0_p, qgf_p);
+			else
+				[plan_2d_temp, flag] = planOneGrasp(id_common(i), path_q(:,p), path_q(:,p+1), qg0_p, qgf_p);
+			end
 
 		    if flag <= 0
                 switch flag
