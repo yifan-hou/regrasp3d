@@ -16,8 +16,8 @@ gp2o_w = grasps.points(:, grasp_id, 2);
 
 gp10_w = quatOnVec(gp1o_w, q0);
 gp20_w = quatOnVec(gp2o_w, q0);
-gp1f_w = quatOnVec(gp1o_w, qf);
-gp2f_w = quatOnVec(gp2o_w, qf);
+% gp1f_w = quatOnVec(gp1o_w, qf);
+% gp2f_w = quatOnVec(gp2o_w, qf);
 
 % ----------------------------------------
 % 	Pick initial & final grasps
@@ -35,22 +35,23 @@ if isempty(gripper_cone_widthf)
 end
 
 
+% grasp frame for q0, under world coordinate
 if isempty(qg0)
-	% grasp frame for q0, under world coordinate
-	[qgrasp0_w, qgrasp0frame_w] = getProperGrasp(grasp_id, q0, gripper_cone_width0, false); 
+	qgrasp0_w = getProperGrasp(grasp_id, q0, gripper_cone_width0, false); 
 else
-	% grasp frame for q0, under world coordinate
-	qgrasp0frame_w = getProperGraspSimple(gp10_w, gp20_w);
-	qgrasp0_w      = qg0;
+	qgrasp0_w = qg0;
 end
 
+% grasp frame for qf, under world coordinate
 if isempty(qgf)
-	% grasp frame for qf, under world coordinate
-	[qgraspf_w, qgraspfframe_w] = getProperGrasp(grasp_id, qf, gripper_cone_widthf, false);
+	qgraspf_w = getProperGrasp(grasp_id, qf, gripper_cone_widthf, false);
 else
-	% grasp frame for qf, under world coordinate
-	qgraspfframe_w = getProperGraspSimple(gp1f_w, gp2f_w);
-	qgraspf_w      = qgf;
+	qgraspf_w = qgf;
+end
+
+if isempty(qgrasp0_w) || isempty(qgraspf_w)
+    flag = -3;
+	return;
 end
 
 % check grasp frame
@@ -66,7 +67,10 @@ gripper0_w           = quatOnVec([0 0 1]', qgrasp0_w); % initial gripper orienta
 ref_frame            = quatMTimes(q0, grasps.ref_frame(:, grasp_id));
 ref                  = quatOnVec([0 0 1]', ref_frame);
 init_sf_id           = angBTVec(ref, gripper0_w, ax0_w, 1);
-init_sf_id           = floor(180/pi*init_sf_id) + 1;
+init_sf_id           = round(180/pi*init_sf_id);
+if init_sf_id == 0
+    init_sf_id = 1;
+end
 collision_free_range = grasps.range(:, grasp_id);
 collision_free_range = singleOutSFRange(collision_free_range, init_sf_id);
 assert(circQuery(collision_free_range, init_sf_id) == 1);
@@ -277,7 +281,6 @@ end
 
 if isempty(plan_2d)
 	flag = -5;
-	qp   = [];
 	return;
 end
 

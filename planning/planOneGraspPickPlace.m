@@ -3,7 +3,7 @@
 % 	q0, qf: initial/final object pose
 % 	qg0, qgf: initial/final grasp pose (could be empty)
 function [plan_2d, flag] = planOneGraspPickPlace(grasp_id, q0, qf, qg0, qgf)
-global mesh grasps pgraph para
+global grasps para
 plan_2d = []; 
 
 % -----------------------------------------
@@ -34,10 +34,10 @@ if isempty(gripper_cone_widthf)
 	return;
 end
 
-% check grasp frame
-temp  = gp10_w - gp20_w;
-tempv = quatOnVec([1 0 0]', qgrasp0_w);
-assert( abs(angBTVec(temp, tempv)) < 1e-7);
+% % check grasp frame
+% temp  = gp10_w - gp20_w;
+% tempv = quatOnVec([1 0 0]', qgrasp0_w);
+% assert( abs(angBTVec(temp, tempv)) < 1e-7);
 
 
 % -----------------------------------
@@ -59,7 +59,7 @@ if ~isempty(qg0)
 	range0      = circQuery(0*range0, angqg0, angqg0_zone);
 end
 
-[~, ~, data] = getProperGrasp(grasp_id, qf, gripper_cone_widthf, false)
+[~, ~, data] = getProperGrasp(grasp_id, qf, gripper_cone_widthf, false);
 rangef       = data.range;
 qgfframe     = data.qg0;
 if ~isempty(qgf)
@@ -82,8 +82,8 @@ end
 id1       = find(range_);
 [~, id2]  = min(abs(id1 - id_center));
 ang       = id1(id2)*pi/180;
-qg_ref    = getProperGraspSimple(gp1o_w, gp2o_w);
-qgrasp0_w = quatMTimes(aa2quat(ang, gp1o_w-gp2o_w), qg_ref);
+% qg_ref    = getProperGraspSimple(gp1o_w, gp2o_w);
+qgrasp0_w = quatMTimes(aa2quat(ang, gp1o_w-gp2o_w), grasps.ref_frame(:, grasp_id));
 qgrasp0_w = quatMTimes(q0, qgrasp0_w);
 
 

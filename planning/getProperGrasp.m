@@ -10,7 +10,7 @@
 %   qframe: the grasp frame
 %   id_center: id of current upright gripper direction in range0
 %   range_: same as range0, but all the angle outside of gripper_cone_width are set to 0
-function [qg, qframe, data] = getProperGrasp(grasp_id, qnow, gripper_cone_width, randgrasp)
+function [qg, data] = getProperGrasp(grasp_id, qnow, gripper_cone_width, randgrasp)
 global grasps
 
 gp10 = grasps.points(:, grasp_id, 1);
@@ -28,14 +28,11 @@ qframe  = qg;
 %       1. within cone width
 %       2. collision free
 % ------------------------------------------------
-% 1. calculate reference grasp in original pose
-qg0 = getProperGraspSimple(gp10, gp20);
-
-% 2. rotate reference grasp to current frame
-qg0 = quatMTimes(qnow, qg0);
+% 1. rotate reference grasp to current frame
+qg0 = quatMTimes(qnow, grasps.ref_frame(:, grasp_id));
 assert(angBTVec(quatOnVec([1 0 0]', qg0), v) < 1e-3);
 
-% 3. compare and find the angle 
+% 2. compare and find the angle 
 z0        = quatOnVec([0 0 1]', qg0);
 z1        = quatOnVec([0 0 1]', qg);
 id_center = round(angBTVec(z0, z1, v, 1)*180/pi); % 0~360
@@ -51,12 +48,11 @@ cone_zone   = (id_center - gripper_cone_width_deg):(id_center + gripper_cone_wid
 range0_zone = circQuery(grasps.range(:, grasp_id), cone_zone);
 range_      = circQuery(zeros(size(grasps.range, 1), 1), cone_zone, range0_zone);
 
-if nargout == 3
+if nargout == 2
     % some temporary variables useful to pick&place
     data.id_center = id_center;
     data.qg0       = qg0;
     data.range     = range_;
-    return;
 end
 
 id_range    = find(range_);
