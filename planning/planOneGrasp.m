@@ -205,7 +205,6 @@ for rot_dir = 1:2
 	% 	Solve the 2D problem 
 	% 	for object motion
 	% -----------------------------------------
-
 	[object_plan_2d_frames, init_roll_ang, flag] = plan2DObject(dir_pro, gravity_pro, init_pro, goal_pro, ...
 						COMp_pro, gpp_pro, pointsp_pro, Rw_2d, pgraph.err_bound, gripper_cone_width, para);
 
