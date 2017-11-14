@@ -231,9 +231,9 @@ for rot_dir = 1:2
     assert(abs(angBTVec(-gravity_pro_proj, goal_final_pro, n) + object_plan_2d.ang2edge - gripper_cone_width) < 1e-4);
 
 	% Check 2: p frame: move goal to edge of cone
-	n_P          = gp1p_P - gp2p_P; n_P = n_P/norm(n_P);
-	n_P          = -n_P*dir_pro;
-	goal_final_p = quatOnVec(graspfpz_P, aa2quat(objang, n_P));
+	n_P               = gp1p_P - gp2p_P; n_P = n_P/norm(n_P);
+	n_P               = -n_P*dir_pro;
+	goal_final_p      = quatOnVec(graspfpz_P, aa2quat(objang, n_P));
 	gravity_p_proj    = gravity_P;
 	gravity_p_proj(1) = 0;
     assert(abs(angBTVec(-gravity_p_proj, goal_final_p, n_P) + object_plan_2d.ang2edge - gripper_cone_width) < 1e-4);
@@ -241,9 +241,9 @@ for rot_dir = 1:2
 	% check 3: world frame, rotate object by object_plan_2d.motion, goal is at gripper_cone, check their angle
 	n_w          = gp1p_w - gp2p_w; n_w = n_w/norm(n_w);
 	gripper_cone = quatOnVec(zP_w, aa2quat(-object_plan_2d.dir*gripper_cone_width, n_w));
-
-	qgoal_rot_w = quatMTimes(aa2quat(objang, -n_w*object_plan_2d.dir), qgraspfp_w);
-	goal_now    = quatOnVec([0 0 1]', qgoal_rot_w);
+	
+	qgoal_rot_w  = quatMTimes(aa2quat(objang, -n_w*object_plan_2d.dir), qgraspfp_w);
+	goal_now     = quatOnVec([0 0 1]', qgoal_rot_w);
 	assert(abs(angBTVec(gripper_cone, goal_now) - object_plan_2d.ang2edge) < 5e-3);
 
 	% -----------------------------------------
