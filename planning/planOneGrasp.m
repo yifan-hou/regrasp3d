@@ -2,7 +2,7 @@
 % 	grasp_id: a specific grasp pos
 % 	q0, qf: initial/final object pose
 % 	qg0, qgf: initial/final grasp pose (could be empty)
-function [plan_2d, flag] = planOneGrasp(grasp_id, q0, qf, qg0, qgf)
+function [plan_2d, flag] = planOneGrasp(grasp_id, q0, qf, qg0, qgf, exactq)
 global mesh grasps pgraph para
 plan_2d = []; 
 
@@ -13,6 +13,70 @@ plan_2d = [];
 % under world coordinate, calculate the grasp pos for object in q0, qf
 gp1o_w = grasps.points(:, grasp_id, 1);
 gp2o_w = grasps.points(:, grasp_id, 2);
+
+
+
+% -----------------------------------------
+% 	Optimization: find q trajectory
+% -----------------------------------------
+N = 30;
+x = rand(3*N,1);
+
+global paraOpt2
+paraOpt2.delta_theta   = 0.05;
+paraOpt2.q0            = [1 0 0 0]';
+paraOpt2.qf            = [0 1 0 0]';
+paraOpt2.qf_inv        = quatInv(paraOpt2.qf);
+paraOpt2.Gp1o          = [0.8 0.5 0.4]';
+paraOpt2.Gp2o          = [0.8 0.6 0.4]';
+paraOpt2.Gp_tilt_limit = 50*pi/180;
+paraOpt2.cost_goal_k   = 10;
+paraOpt2.cost_tilt_k   = 1;
+
+snprint('../optimization/snoptfiles/snoptOPT2.out');
+snoptOPT2.spc = which('../optimization/snoptfiles/snoptOPT2.spc');
+snspec ( snoptOPT2.spc );
+
+snseti ('Major Iteration limit', 50);
+snset  ('Minimize');
+tic
+[x,F,INFO] = snopt(x,xlow,xupp,Flow,Fupp,'FUNOPT2Wrapper');
+toc
+% itns   =  sngeti ('iw 421')
+% majors =  sngeti ('iw 422')
+
+snprint off; % Closes the file and empties the print buffer
+
+
+
+% ---------------------------------------------
+disp('Results:');
+n = zeros(3, N);
+for i = 1:N
+	n(1, i) = x((i-1)*3+1);
+	n(2, i) = x((i-1)*3+2);
+	n(3, i) = x((i-1)*3+3);
+end
+theta                  = normByCol(n);
+temp                   = ones(3,1)*(sin(theta)./theta);
+q                      = [cos(theta); temp.*n];
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 gp10_w = quatOnVec(gp1o_w, q0);
 gp20_w = quatOnVec(gp2o_w, q0);

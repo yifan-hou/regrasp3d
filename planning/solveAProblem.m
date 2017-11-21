@@ -1,6 +1,10 @@
 function [path_found, plan_3d] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f, method)
 global para fgraph pgraph mesh gripper grasps % inputs
 
+addpath ../optimization/autodiff_generated
+addpath ../optimization/snoptfiles
+addpath ../optimization/
+
 plan_3d = [];
 % treat initial/final pose as additional mode
 % build the full graph
@@ -71,23 +75,28 @@ while true
 			qg0_p = [];
 		end
 
+		exactq = false;
 		if p == NP-1
 			qgf_p         = qgf;
 			path_q(:,p+1) = qf;
+			exactq        = true;
 		else
 			qgf_p         = [];
-			path_q(:,p+1) = fgraph.quat(:, mode_id_path(p+1));
+			path_q(:,p+1) = getClosestQuat(path_q(:, p), fgraph.quat(:, mode_id_path(p+1)), [0 0 1]');
 		end
+
 		id_common = find(mode_grasps(mode_id_path(p),:) & mode_grasps(mode_id_path(p+1),:)); 
 		assert(~isempty(id_common)); % if failed, the graph search has problem
 		dispC(['  Edge #' num2str(p) ', common grasps: ' num2str(length(id_common))]);
+
+
 		for i = 1:length(id_common)
 			path_graspid(p) = id_common(i);
 
 			if strcmp(method, 'pickplace')
 				[plan_2d_temp, flag] = planOneGraspPickPlace(id_common(i), path_q(:,p), path_q(:,p+1), qg0_p, qgf_p);
 			else
-				[plan_2d_temp, flag] = planOneGrasp(id_common(i), path_q(:,p), path_q(:,p+1), qg0_p, qgf_p);
+				[plan_2d_temp, flag] = planOneGrasp(id_common(i), path_q(:,p), path_q(:,p+1), qg0_p, qgf_p, exactq);
 			end
 
 		    if flag <= 0

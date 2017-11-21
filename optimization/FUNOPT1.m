@@ -96,6 +96,6 @@ return;
 % xlow = -2*pi*ones(3*N, 1);
 % xupp = 2*pi*ones(3*N, 1);
 % 
-% save snoptfiles/sizeInfo.mat Flow Fupp xlow xupp
+% save snoptfiles/sizeInfo1.mat Flow Fupp xlow xupp
 
 end
