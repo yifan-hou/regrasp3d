@@ -1,0 +1,32 @@
+
+Using the SNOPT mex Files in $SNOPT/matlab
+==========================================
+
+ Rename the appropriate precompiled mex interface to match the
+ architecture of your machine.
+ e.g., on an Intel Mac:
+   1. Go to: Applications --> Utilities  and click on the Terminal.app
+   2. In the terminal window, cd to the snopt7/matlab directory and type:
+          % mv precompiled_snoptcmex.mexmaci snoptcmex.mexmaci
+
+
+ Run Matlab in the directory $SNOPT/matlab.
+
+ Typing
+  >> more on
+  >> help Contents
+from Matlab provides an overview of the package.
+
+ At the Matlab prompt, type
+  >> runAllExamples
+This script sets the matlab path appropriately.
+
+ The subdirectory ./examples contains various sample problems
+that demonstrate how to use the snOpt Matlab interfaces.  Read
+the in-line help information for each m-file for more
+information.  To run the individual m-files type
+
+  >> setpath  % if you haven't already called runAllExamples
+  >> addpath examples
+  >> addpath examples/snmain
+  >> snoptmain
