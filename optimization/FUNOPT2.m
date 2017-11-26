@@ -16,15 +16,21 @@ para_cost_tilt_k   = para.cost_tilt_k;
 N = length(x)/3;
 
 % Numerical
-nq_ = zeros(3, N);
-for i = 1:N
-	nq_(1, i) = nq((i-1)*3+1);
-	nq_(2, i) = nq((i-1)*3+2);
-	nq_(3, i) = nq((i-1)*3+3);
-end
+% nq_ = zeros(3, N);
+% for i = 1:N
+% 	nq_(1, i) = nq((i-1)*3+1);
+% 	nq_(2, i) = nq((i-1)*3+2);
+% 	nq_(3, i) = nq((i-1)*3+3);
+% end
+nq_ = reshape(nq, [3,N]);
 theta                  = normByCol(nq_);
 temp                   = ones(3,1)*(sin(theta)./theta);
 q                      = [cos(theta); temp.*nq_];
+for i = 1:N
+	if theta(i) < 1e-8
+		q(:, i) = [1 0 0 0]';
+	end
+end		
 q_plus                 = q(:, 2:end);
 q_minus                = q(:, 1:end-1);
 qq                     = sum(q_plus.*q_minus)';
@@ -52,13 +58,7 @@ tempB2     = quatInv(q);
 Gp2        = quatMTimes_NN(tempA2, tempB2);
 
 Gax          = (Gp1 - Gp2);
-
-% Gax_tilt_ang = zeros(N, 1);
-% for i = 1:N
-% 	Gax_tilt_ang(i) = angBTVec_([0; 0; 1], Gax(:, i));
-% end
-tempb = Gax./(ones(3,1)*normByCol(Gax));
-% tempb   = bsxfun(@rdivide, Gax, normByCol(Gax));
+tempb        = Gax./(ones(3,1)*normByCol(Gax));
 Gax_tilt_ang = acos(tempb(3,:))';
 
 Gax_tilt_ang_horizontal = (Gax_tilt_ang - pi/2).^2;
@@ -89,13 +89,13 @@ CON_E = [CON_E_q_init; CON_E_q_final];
 FUN = [COST; CON_L; CON_E];
 
 
-return;
+% return;
 
-% Flow = [-inf; -inf(size(CON_L)); zeros(size(CON_E))];
-% Fupp = [inf; zeros(size(CON_L)); zeros(size(CON_E))];
-% xlow = -2*pi*ones(3*N, 1);
-% xupp = 2*pi*ones(3*N, 1);
-% 
-% save snoptfiles/sizeInfo2.mat Flow Fupp xlow xupp
+Flow = [-inf; -inf(size(CON_L)); zeros(size(CON_E))];
+Fupp = [inf; zeros(size(CON_L)); zeros(size(CON_E))];
+xlow = -2*pi*ones(3*N, 1);
+xupp = 2*pi*ones(3*N, 1);
+
+save snoptfiles/sizeInfo2.mat Flow Fupp xlow xupp
 
 end

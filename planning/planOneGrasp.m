@@ -63,9 +63,11 @@ for i = 1:N
 	n(2, i) = x((i-1)*3+2);
 	n(3, i) = x((i-1)*3+3);
 end
-theta = normByCol(n);
-temp  = ones(3,1)*(sin(theta)./theta);
-qobj  = [cos(theta); temp.*n];
+theta       = normByCol(n);
+id          = theta < 1e-8;
+temp        = ones(3,1)*(sin(theta)./theta);
+temp(:, id) = 0;
+qobj        = [cos(theta); temp.*n];
 
 % check results
 
