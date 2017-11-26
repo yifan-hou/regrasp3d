@@ -103,6 +103,9 @@ para.GRIPPER_Z_LIMIT             = 0.2; % finger position limit
 para.PIVOTABLE_CHECK_GRANULARITY = 1*pi/180; % 1 sample every 1 degree
 para.COLLISION_FREE_ANGLE_MARGIN = 5; % stay away from collsion for at least 5 degrees
 									  % has to be an positive integer
+% optimization parameter
+para.cost_goal_k    = 10;
+para.cost_goal_tilt = 1;
 
 % ploting control
 para.showCheckedGrasp     = true;
