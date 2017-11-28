@@ -16,16 +16,10 @@ para_cost_tilt_k   = para.cost_tilt_k;
 N = length(x)/3;
 
 % Numerical
-% nq_ = zeros(3, N);
-% for i = 1:N
-% 	nq_(1, i) = nq((i-1)*3+1);
-% 	nq_(2, i) = nq((i-1)*3+2);
-% 	nq_(3, i) = nq((i-1)*3+3);
-% end
 nq_ = reshape(nq, [3,N]);
 theta                  = normByCol(nq_);
-temp                   = ones(3,1)*(sin(theta)./theta);
-q                      = [cos(theta); temp.*nq_];
+temp                   = ones(3,1)*(sin(theta/2)./theta);
+q                      = [cos(theta/2); temp.*nq_];
 for i = 1:N
 	if theta(i) < 1e-8
 		q(:, i) = [1 0 0 0]';

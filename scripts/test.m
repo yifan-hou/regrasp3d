@@ -1,29 +1,16 @@
 clear;clc
+n0 = [0 0 1]';
+q1 = aa2quat(0, n0);
+q2 = aa2quat(60*pi/180, n0);
+q3 = aa2quat(90*pi/180, n0);
 
-addpath ../optimization/generated/
-N = 50;
+q = quatSquad([0 2 3], [q1 q2 q3], (0:0.01:1)*3);
 
-para_delta_q       = 0.05;
-para_q0            = [1 0 0 0]';
-para_qf            = [0 1 0 0]';
-para_Gp1o          = [0.8 0.5 0.4]';
-para_Gp2o          = [0.8 0.6 0.4]';
-para_GpZ_limit     = 0.1;
-para_Gp_tilt_limit = 50*pi/180;
+[theta, n] = quat2aa(q);
 
-para_cost_goal_k = 10;
-para_cost_tilt_k = 1;
+n'
 
-
-for i = 1:20
-
-	nq = rand(4, 150);
-	nq = bsxfun(@rdivide, nq, normByCol(nq));
-
-	tic;
-	FUN = FUN1(nq(:), para_delta_q, para_q0, para_qf, para_Gp1o, para_Gp2o, para_GpZ_limit, para_Gp_tilt_limit, para_cost_goal_k, para_cost_tilt_k);
-	toc;
-end
+plot(theta);
 
 
 

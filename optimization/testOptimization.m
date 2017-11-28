@@ -73,9 +73,9 @@ for i = 1:N
 end
 theta                  = normByCol(n);
 id                     = theta < 1e-8;
-temp                   = ones(3,1)*(sin(theta)./theta);
+temp                   = ones(3,1)*(sin(theta/2)./theta);
 temp(:, id)            = 0;
-q                      = [cos(theta); temp.*n];
+q                      = [cos(theta/2); temp.*n];
 
 for i = 1:N
 	disp(q(:,i)');

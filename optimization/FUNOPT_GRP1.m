@@ -1,9 +1,8 @@
-% pose to mode
-function FUN = FUNOPT2(x, para)
-
+% pose to pose
+function FUN = FUNOPT_GRP1(x, para)
 nq                 = x;
 para_delta_theta   = para.delta_theta;
-para_q0            = para.q0;
+para_q             = para.q0;
 para_qf            = para.qf;
 para_qf_inv		   = para.qf_inv;
 para_Gp1o          = para.Gp1o;
@@ -18,8 +17,8 @@ N = length(x)/3;
 % Numerical
 nq_ = reshape(nq, [3,N]);
 theta                  = normByCol(nq_);
-temp                   = ones(3,1)*(sin(theta/2)./theta);
-q                      = [cos(theta/2); temp.*nq_];
+temp                   = ones(3,1)*(sin(theta)./theta);
+q                      = [cos(theta); temp.*nq_];
 for i = 1:N
 	if theta(i) < 1e-8
 		q(:, i) = [1 0 0 0]';
@@ -41,15 +40,15 @@ A = [0 0 0;
 	 1 0 0;
 	 0 1 0;
 	 0 0 1];
-para_Gp1o_ = A*para_Gp1o;
-tempA1     = quatMTimes_N1(q, para_Gp1o_);
-tempB1     = quatInv(q);
-Gp1        = quatMTimes_NN(tempA1, tempB1);
+para_Gp1o_   = A*para_Gp1o;
+tempA1       = quatMTimes_N1(q, para_Gp1o_);
+tempB1       = quatInv(q);
+Gp1          = quatMTimes_NN(tempA1, tempB1);
 
-para_Gp2o_ = A*para_Gp2o;
-tempA2     = quatMTimes_N1(q, para_Gp2o_);
-tempB2     = quatInv(q);
-Gp2        = quatMTimes_NN(tempA2, tempB2);
+para_Gp2o_   = A*para_Gp2o;
+tempA2       = quatMTimes_N1(q, para_Gp2o_);
+tempB2       = quatInv(q);
+Gp2          = quatMTimes_NN(tempA2, tempB2);
 
 Gax          = (Gp1 - Gp2);
 tempb        = Gax./(ones(3,1)*normByCol(Gax));
@@ -61,18 +60,18 @@ COST_tilt               = sum(Gax_tilt_ang_horizontal);
 
 
 % Boundary
-q_init          = q(:, 1);
-q_final         = q(:, end);
-CON_E_q_init    = acos(para_q0'*q_init); % = 0
-% CON_E_q_final   = acos(para_qf);
+q_init        = q(:, 1);
+q_final       = q(:, end);
+CON_E_q_init  = acos(para_q0'*q_init); % = 0
+CON_E_q_final = acos(para_qf'*q_final); % = 0
 
-qf_rot2goal     = quatMTimes_2(para_qf_inv, q_final);
-[~, q_final_ax] = quat2aa(qf_rot2goal);
-CON_E_q_final   = norm_([0 0 1]' - q_final_ax);
+% qf_rot2goal     = quatMTimes_2(para_qf_inv, q_final);
+% [~, q_final_ax] = quat2aa(qf_rot2goal);
+% CON_E_q_final   = norm_([0 0 1]' - q_final_ax);
 
 % goal
 dist_2_goal = acos(para_qf'*q);
-COST_GOAL = sum(dist_2_goal);
+COST_GOAL   = sum(dist_2_goal);
 
 
 % summary
@@ -87,9 +86,9 @@ FUN = [COST; CON_L; CON_E];
 
 Flow = [-inf; -inf(size(CON_L)); zeros(size(CON_E))];
 Fupp = [inf; zeros(size(CON_L)); zeros(size(CON_E))];
-xlow = -2*pi*ones(3*N, 1);
-xupp = 2*pi*ones(3*N, 1);
+xlow = -pi*ones(3*N, 1);
+xupp = pi*ones(3*N, 1);
 
-save snoptfiles/sizeInfo2.mat Flow Fupp xlow xupp
+save snoptfiles/sizeInfo1.mat Flow Fupp xlow xupp
 
 end

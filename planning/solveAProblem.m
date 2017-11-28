@@ -104,11 +104,11 @@ while true
                     case -1
                         dispC(['  --- Grasp ' num2str(i) ' Required rolling exceeds gripper tilt limit']);
                     case -3
-                        dispC(['  --- Grasp ' num2str(i) ' Initial/final grasp pos infeasible ']);
+                        dispC(['  --- Grasp ' num2str(i) ' q obj trajectory violates gripper tilt angle limit ']);
                     case -4
-                        dispC(['  --- Grasp ' num2str(i) ' Initial/final grasp pos violates gripper Z limit ']);
+                        dispC(['  --- Grasp ' num2str(i) ' q obj trajectory violates gripper Z limit ']);
                     case -5
-                        dispC(['  --- Grasp ' num2str(i) ' Gripper motion infeasible ']);
+                        dispC(['  --- Grasp ' num2str(i) ' q obj infeasible ']);
                     otherwise
                         error('Wrong flag');
                 end
