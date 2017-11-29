@@ -89,7 +89,6 @@ while true
 		assert(~isempty(id_common)); % if failed, the graph search has problem
 		dispC(['  Edge #' num2str(p) ', common grasps: ' num2str(length(id_common))]);
 
-
 		for i = 1:length(id_common)
 			path_graspid(p) = id_common(i);
 
@@ -104,11 +103,13 @@ while true
                     case -1
                         dispC(['  --- Grasp ' num2str(i) ' Required rolling exceeds gripper tilt limit']);
                     case -3
-                        dispC(['  --- Grasp ' num2str(i) ' q obj trajectory violates gripper tilt angle limit ']);
+                        dispC(['  --- Grasp ' num2str(i) ' [q obj optimization] violates gripper tilt angle limit ']);
                     case -4
-                        dispC(['  --- Grasp ' num2str(i) ' q obj trajectory violates gripper Z limit ']);
+                        dispC(['  --- Grasp ' num2str(i) ' [q obj optimization] violates gripper Z limit ']);
                     case -5
-                        dispC(['  --- Grasp ' num2str(i) ' q obj infeasible ']);
+                        dispC(['  --- Grasp ' num2str(i) ' [q obj optimization] infeasible ']);
+                    case -6
+                        dispC(['  --- Grasp ' num2str(i) ' [q obj checking] no collision free path ']);
                     otherwise
                         error('Wrong flag');
                 end

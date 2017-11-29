@@ -1,33 +1,10 @@
 % pose to pose
-function FUN = FUNOPT_GRP1(x, para)
-nq                 = x;
-para_delta_theta   = para.delta_theta;
+function FUN = FUNOPT_GRP(x, para)
 para_q             = para.q0;
 para_qf            = para.qf;
-para_qf_inv		   = para.qf_inv;
-para_Gp1o          = para.Gp1o;
-para_Gp2o          = para.Gp2o;
-% para_GpZ_limit     = para.GpZ_limit;
-para_Gp_tilt_limit = para.Gp_tilt_limit;
-para_cost_goal_k   = para.cost_goal_k;
-para_cost_tilt_k   = para.cost_tilt_k;
+% para_qf_inv		   = para.qf_inv;
 
-N = length(x)/3;
-
-% Numerical
-nq_ = reshape(nq, [3,N]);
-theta                  = normByCol(nq_);
-temp                   = ones(3,1)*(sin(theta)./theta);
-q                      = [cos(theta); temp.*nq_];
-for i = 1:N
-	if theta(i) < 1e-8
-		q(:, i) = [1 0 0 0]';
-	end
-end		
-q_plus                 = q(:, 2:end);
-q_minus                = q(:, 1:end-1);
-qq                     = sum(q_plus.*q_minus)';
-CON_L_obj_ang_bt_frame = acos(qq) - para_delta_theta; % < 0
+N = para.N;
 
 % Workspace
 % Gp1 = zeros(3, N);

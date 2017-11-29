@@ -11,39 +11,24 @@ plan_2d = [];
 % 	check if both initial/final grasp exists 
 % 	in the same collision free range
 
-% grasp frame for q0, under world coordinate
-if isempty(qg0)
-	qgrasp0_w = getProperGrasp(grasp_id, q0, gripper_cone_width0, false); 
-else
-	qgrasp0_w = qg0;
-end
+% % grasp frame for q0, under world coordinate
+% if isempty(qg0)
+% 	qgrasp0_w = getProperGrasp(grasp_id, q0, gripper_cone_width0, false); 
+% else
+% 	qgrasp0_w = qg0;
+% end
 
-% grasp frame for qf, under world coordinate
-if isempty(qgf)
-	qgraspf_w = getProperGrasp(grasp_id, qf, gripper_cone_widthf, false);
-else
-	qgraspf_w = qgf;
-end
+% % grasp frame for qf, under world coordinate
+% if isempty(qgf)
+% 	qgraspf_w = getProperGrasp(grasp_id, qf, gripper_cone_widthf, false);
+% else
+% 	qgraspf_w = qgf;
+% end
 
-if isempty(qgrasp0_w) || isempty(qgraspf_w)
-    flag = -3;
-	return;
-end
-% 	Find out the slice of collision-free range
-% -----------------------------------------
-ax0_w                = quatOnVec([1 0 0]', qgrasp0_w); % grasp axis in world frame
-gripper0_w           = quatOnVec([0 0 1]', qgrasp0_w); % initial gripper orientation in world frame
-ref_frame            = quatMTimes(q0, grasps.ref_frame(:, grasp_id));
-ref                  = quatOnVec([0 0 1]', ref_frame);
-init_sf_id           = angBTVec(ref, gripper0_w, ax0_w, 1);
-init_sf_id           = round(180/pi*init_sf_id);
-if init_sf_id == 0
-    init_sf_id = 1;
-end
-collision_free_range = grasps.range(:, grasp_id);
-collision_free_range = singleOutSFRange(collision_free_range, init_sf_id);
-assert(circQuery(collision_free_range, init_sf_id) == 1);
-
+% if isempty(qgrasp0_w) || isempty(qgraspf_w)
+%     flag = -3;
+% 	return;
+% end
 
 
 
@@ -58,10 +43,42 @@ points = pgraph.vertices; % decimated convex hull
 com    = mesh.com;
 ps_err = pgraph.err_bound;
 
+
+% 	Find out the slice of collision-free range
+qfr0    = getProperGraspSimple(grasp_id, q0);
+qfr0z   = quatOnVec([0 0 1]', qfr0); % initial gripper orientation in world frame
+qfr0z_o = quatOnVec(qfr0z, quatInv(q0));
+refz_o  = quatOnVec([0 0 1]', grasps.ref_frame(:, grasp_id));
+refx_o  = quatOnVec([1 0 0]', grasps.ref_frame(:, grasp_id));
+
+% get seed
+% seed must be within [-pi, pi] around current z
+z0_ang      = angBTVec(refz_o, qfr0z_o, refx_o, 1);
+z0_id       = round(180/pi*z0_ang);
+z0_id_range = (z0_id-90):(z0_id+90);
+cf_range0   = circQuery(grasps.range(:, grasp_id), z0_id_range);
+start1      = strfind([0,cf_range0==1],[0 1]);
+end1        = strfind([cf_range0==1,0],[1 0]);
+seeds       = round( (end1 + start1)/2);
+seeds       = z0_id_range(seeds);
+Ncf         = length(seeds);
+
+collision_free_range = zeros(360, Ncf);
+for i = 1:Ncf
+	if seeds(i) > 360
+		seeds(i) = seeds(i) - 360;
+	elseif seeds(i) < 1
+		seeds(i) = seeds(i) + 360;
+	end
+	
+	collision_free_range(:, i) = singleOutSFRange(grasps.range(:, grasp_id), seeds(i));
+	assert(circQuery(collision_free_range(:, i), seeds(i)) == 1);
+end
+
 % -----------------------------------------
 % 	Optimization: find qobj trajectory
 % -----------------------------------------
-N = 30;
+N = 20;
 x = (2*rand(3*N,1) - 1)*pi;
 
 global paraOpt
@@ -127,21 +144,22 @@ Ng = 100;
 % resample object orientation
 qobj = quatSquad(0:N-1, qobj, (0:Ng-1)/(Ng-1)*(N-1));
 
-
 % for each frame, compute:
 % 	pivotable
-% 	collision free range
 % 	gripper feasible range (tilting range)
-% 	
-rtype      = zeros(1, Ng); % 1: pivotable, 0: roll
-cf_range   = zeros(2, Ng); % min (right), max (left)
-tilt_range = zeros(2, Ng); % min (right), max (left)
+% 	collision free range
+rtype       = zeros(1, Ng); % 1: pivotable, 0: roll
+tilt_range  = zeros(2, Ng); % min (right), max (left)
+cf_range    = zeros(2, Ng); % min (right), max (left)
+cf_feasible = ones(1, Ncf); % choice of collision free range
 
 for fr = 1:Ng
 	qp = qobj(:, fr);
 	m_fr = quat2m(qp);
 
+	% 
 	% check tilt angle limit
+	% 
 	gripper_cone_width = getTiltedGripperCone(grasp_id, qp, para.GRIPPER_TILT_LIMIT);
 	if isempty(gripper_cone_width)
 	    flag = -3;
@@ -149,6 +167,36 @@ for fr = 1:Ng
 	end
 	tilt_range(1, fr) = - gripper_cone_width;
 	tilt_range(2, fr) =   gripper_cone_width;
+	% 
+	% check collision free range
+	% 
+	qfr    = getProperGraspSimple(grasp_id, qp);
+	qfrz   = quatOnVec([0 0 1]', qfr); % initial gripper orientation in world frame
+	qfrz_o = quatOnVec(qfrz, quatInv(qp));
+	for cf = 1:Ncf
+		% check with each range
+		if ~cf_feasible(cf)
+			continue;
+		end
+		z_ang      = angBTVec(refz_o, qfrz_o, refx_o, 1);
+		z_id       = round(180/pi*z_ang);
+		z_id_range = (z_id-90):(z_id+90);
+		cf_range   = circQuery(collision_free_range(:, cf), z0_id_range);
+		start1     = strfind([0,cf_range0==1],[0 1]);
+		end1       = strfind([cf_range0==1,0],[1 0]);
+		if isempty(start1)
+			cf_feasible(cf) = false;
+			continue;
+		end
+		z_id_range      = -90:90;
+		cf_range(1, fr) = z_id_range(start1)*pi/180;
+		cf_range(2, fr) = z_id_range(end1)*pi/180;
+	end
+
+	if ~any(cf_feasible)
+		flag = -6;
+		return;
+	end
 
 	% rotate and compute:
 	% 	points on the object
@@ -165,15 +213,19 @@ for fr = 1:Ng
 	gp1_fr         = gp1_fr - zoffset;
 	gp2_fr         = gp2_fr - zoffset;
 	
+	% 
     % check z limit
+    % 
 	if (gp1_fr(3) < para.GRIPPER_Z_LIMIT + ps_err)||(gp2_fr(3) < para.GRIPPER_Z_LIMIT + ps_err)
 		flag = -4;
 		return;
 	end
 
+	% 
+	% check pivotablity (Robustly)
+	% 
 
 	% measure in grasp frame
-	% 	check: pivotability
 	qGF_w  = getProperGraspSimple(gp1_fr, gp2_fr); % p frame, measured in world frame
 	com_GF = quatOnVec(com_fr, quatInv(qGF_w));
 	gp1_GF = quatOnVec(gp1_fr, quatInv(qGF_w));
@@ -182,27 +234,27 @@ for fr = 1:Ng
 	cpid  = points_fr(3, :) < 2*ps_err + 1e-4;
 	cp_fr = points_fr(:, cpid); % potential contact points
 	cp_GF = quatOnVec(cp_fr, quatInv(qGF_w));
-
-	% check pivotablity (Robustly)
-	cp_l = min(cp_GF(2, :));
-	cp_r = max(cp_GF(2, :));
+	cp_l  = min(cp_GF(2, :));
+	cp_r  = max(cp_GF(2, :));
 	if (cp_l*com_GF(2) > 0) && (cp_r*com_GF(2) > 0)
 		rtype(fr) = 1;
 	end
 	
-
-
-
-
 end
-
 
 
 % -----------------------------------------
 % 	Optimization: find gripper trajectory
 % -----------------------------------------
-minimize gripper motion
+rtype       = zeros(1, Ng); % 1: pivotable, 0: roll
+tilt_range  = zeros(2, Ng); % min (right), max (left)
+cf_range    = zeros(2, Ng); % min (right), max (left)
+paraOptGRP.N          = Ng;
+paraOptGRP.rtype      = rtype;
+paraOptGRP.tilt_range = tilt_range;
+paraOptGRP.cf_range   = cf_range;
 
+minimize gripper motion
 
 
 
