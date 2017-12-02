@@ -102,6 +102,8 @@ while true
                 switch flag
                     case -1
                         dispC(['  --- Grasp ' num2str(i) ' Required rolling exceeds gripper tilt limit']);
+                    case -2
+                        dispC(['  --- Grasp ' num2str(i) ' [Pre-checking] initial/final grasp infeasible']);
                     case -3
                         dispC(['  --- Grasp ' num2str(i) ' [q obj optimization] violates gripper tilt angle limit ']);
                     case -4

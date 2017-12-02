@@ -7,31 +7,6 @@ function [plan_2d, flag] = planOneGrasp(grasp_id, q0, qf, qg0, qgf, exactq)
 global mesh grasps pgraph para
 plan_2d = []; 
 
-% pick grasp range
-% 	check if both initial/final grasp exists 
-% 	in the same collision free range
-
-% % grasp frame for q0, under world coordinate
-% if isempty(qg0)
-% 	qgrasp0_w = getProperGrasp(grasp_id, q0, gripper_cone_width0, false); 
-% else
-% 	qgrasp0_w = qg0;
-% end
-
-% % grasp frame for qf, under world coordinate
-% if isempty(qgf)
-% 	qgraspf_w = getProperGrasp(grasp_id, qf, gripper_cone_widthf, false);
-% else
-% 	qgraspf_w = qgf;
-% end
-
-% if isempty(qgrasp0_w) || isempty(qgraspf_w)
-%     flag = -3;
-% 	return;
-% end
-
-
-
 % -----------------------------------------
 % 	Get the data
 % -----------------------------------------
@@ -45,16 +20,17 @@ ps_err = pgraph.err_bound;
 
 
 % 	Find out the slice of collision-free range
-qfr0    = getProperGraspSimple(grasp_id, q0);
-qfr0z   = quatOnVec([0 0 1]', qfr0); % initial gripper orientation in world frame
-qfr0z_o = quatOnVec(qfr0z, quatInv(q0));
 refz_o  = quatOnVec([0 0 1]', grasps.ref_frame(:, grasp_id));
 refx_o  = quatOnVec([1 0 0]', grasps.ref_frame(:, grasp_id));
+qfr0    = getProperGraspSimple(grasp_id, q0);
+% qfr0z   = quatOnVec([0 0 1]', qfr0); % initial gripper orientation in world frame
+% qfr0z_o = quatOnVec(qfr0z, quatInv(q0));
+% z0_ang      = angBTVec(refz_o, qfr0z_o, refx_o, 1);
+% z0_id       = round(180/pi*z0_ang);
 
 % get seed
 % seed must be within [-pi, pi] around current z
-z0_ang      = angBTVec(refz_o, qfr0z_o, refx_o, 1);
-z0_id       = round(180/pi*z0_ang);
+[~, z0_id]  = getIDinCfRange(qfr0, q0, refz_o, refx_o);
 z0_id_range = (z0_id-90):(z0_id+90);
 cf_range0   = circQuery(grasps.range(:, grasp_id), z0_id_range);
 start1      = strfind([0,cf_range0==1],[0 1]);
@@ -75,54 +51,64 @@ for i = 1:Ncf
 	assert(circQuery(collision_free_range(:, i), seeds(i)) == 1);
 end
 
+% Check if both initial/final grasp exists 
+% in the same collision free range
+cf_feasible  = ones(1, Ncf); % choice of collision free range
+
+if ~isempty(qg0)
+	[~, zg0_id] = getIDinCfRange(qg0, q0, refz_o, refx_o);
+	cf_feasible = collision_free_range(zg0_id, :)';
+end
+
+if ~isempty(qgf)
+	[~, zgf_id] = getIDinCfRange(qgf, qf, refz_o, refx_o);
+	cf_feasible = cf_feasible&collision_free_range(zgf_id, :)';
+end
+
+if ~any(cf_feasible)
+	flag = -2;
+	return;
+end
+
 % -----------------------------------------
 % 	Optimization: find qobj trajectory
 % -----------------------------------------
 N = 20;
 x = (2*rand(3*N,1) - 1)*pi;
 
-global paraOpt
-paraOpt.delta_theta   = 0.05; % rad
-paraOpt.q0            = q0;
-paraOpt.qf            = qf;
-paraOpt.qf_inv        = quatInv(qf);
-paraOpt.Gp1o          = gp1o_w;
-paraOpt.Gp2o          = gp2o_w;
-paraOpt.Gp_tilt_limit = para.GRIPPER_TILT_LIMIT;
-paraOpt.cost_goal_k   = para.cost_goal_k;
-paraOpt.cost_tilt_k   = para.cost_tilt_k;
+global paraOptOBJ
+paraOptOBJ.delta_theta   = 0.05; % rad
+paraOptOBJ.q0            = q0;
+paraOptOBJ.qf            = qf;
+paraOptOBJ.qf_inv        = quatInv(qf);
+paraOptOBJ.Gp1o          = gp1o_w;
+paraOptOBJ.Gp2o          = gp2o_w;
+paraOptOBJ.Gp_tilt_limit = para.GRIPPER_TILT_LIMIT;
+paraOptOBJ.cost_goal_k   = para.cost_goal_k;
+paraOptOBJ.cost_tilt_k   = para.cost_tilt_k;
 
-snoptOPT.spc = which('../optimization/snoptfiles/snoptOPT.spc');
+snoptOPT.spc = which('../optimization/snoptfiles/snoptOPT_OBJ.spc');
 snspec ( snoptOPT.spc );
 snseti ('Major Iteration limit', 50);
 snset  ('Minimize');
 
-if exactq
-	snprint('../optimization/snoptfiles/snoptOPT1.out');
-	FUNOPT1(x, paraOpt);
-	load snoptfiles/sizeInfo1.mat
-	tic
-	[x,F,INFO] = snopt(x,xlow,xupp,Flow,Fupp,'FUNOPT1Wrapper');
-	toc
-	% check results
-	con = checkConstraint(x, paraOpt, @FUNOPT1, Flow, Fupp);
-else
-	snprint('../optimization/snoptfiles/snoptOPT2.out');
-	FUNOPT2(x, paraOpt);
-	load snoptfiles/sizeInfo2.mat
-	tic
-	[x,F,INFO] = snopt(x,xlow,xupp,Flow,Fupp,'FUNOPT2Wrapper');
-	toc
-	% check results
-	con = checkConstraint(x, paraOpt, @FUNOPT2, Flow, Fupp);
-end
+snprint('../optimization/snoptfiles/snoptOPT_OBJ.out');
+[~, Flow, Fupp, xlow, xupp] = FUNOPT_OBJ(x, paraOptOBJ);
+tic
+[x,F,INFO] = snopt(x,xlow,xupp,Flow,Fupp,'FUNOPT_OBJWrapper');
+toc
 snprint off; % Closes the file and empties the print buffer
 
-if norm(con) > 0.1
+% check results
+[con_x, con_f] = checkConstraint(x, paraOptOBJ, @FUNOPT_OBJ, xlow, xupp, Flow, Fupp);
+
+if norm(con_x)+norm(con_f) > 0.1
 	% infeaseble 
 	flag = -5;
 	return;
 end	
+
+
 
 % read results
 n = zeros(3, N);
@@ -148,10 +134,10 @@ qobj = quatSquad(0:N-1, qobj, (0:Ng-1)/(Ng-1)*(N-1));
 % 	pivotable
 % 	gripper feasible range (tilting range)
 % 	collision free range
-rtype       = zeros(1, Ng); % 1: pivotable, 0: roll
-tilt_range  = zeros(2, Ng); % min (right), max (left)
-cf_range    = zeros(2, Ng); % min (right), max (left)
-cf_feasible = ones(1, Ncf); % choice of collision free range
+rtype        = zeros(1, Ng); % 1: pivotable, 0: roll
+obj_rotation = zeros(1, Ng); % rotation of object measured in grasp frame
+tilt_range   = zeros(2, Ng); % min (right), max (left)
+cf_range     = zeros(2, Ng); % min (right), max (left)
 
 for fr = 1:Ng
 	qp = qobj(:, fr);
@@ -170,27 +156,30 @@ for fr = 1:Ng
 	% 
 	% check collision free range
 	% 
-	qfr    = getProperGraspSimple(grasp_id, qp);
-	qfrz   = quatOnVec([0 0 1]', qfr); % initial gripper orientation in world frame
-	qfrz_o = quatOnVec(qfrz, quatInv(qp));
+	qfr        = getProperGraspSimple(grasp_id, qp);
+	[z_ang, z_id] = getIDinCfRange(qfr, qp, refz_o, refx_o)
+	% qfrz       = quatOnVec([0 0 1]', qfr); % initial gripper orientation in world frame
+	% qfrz_o     = quatOnVec(qfrz, quatInv(qp));
+	% z_ang      = angBTVec(refz_o, qfrz_o, refx_o, 1);
+	% z_id       = round(180/pi*z_ang);
+	z_id_range = (z_id-90):(z_id+90);
+
+	obj_rotation(fr) = z_ang;
 	for cf = 1:Ncf
 		% check with each range
 		if ~cf_feasible(cf)
 			continue;
 		end
-		z_ang      = angBTVec(refz_o, qfrz_o, refx_o, 1);
-		z_id       = round(180/pi*z_ang);
-		z_id_range = (z_id-90):(z_id+90);
-		cf_range   = circQuery(collision_free_range(:, cf), z0_id_range);
-		start1     = strfind([0,cf_range0==1],[0 1]);
-		end1       = strfind([cf_range0==1,0],[1 0]);
+		cf_range   = circQuery(collision_free_range(:, cf), z_id_range);
+		start1     = strfind([0,cf_range==1],[0 1]);
+		end1       = strfind([cf_range==1,0],[1 0]);
 		if isempty(start1)
 			cf_feasible(cf) = false;
 			continue;
 		end
-		z_id_range      = -90:90;
-		cf_range(1, fr) = z_id_range(start1)*pi/180;
-		cf_range(2, fr) = z_id_range(end1)*pi/180;
+		temp_id_range      = -90:90;
+		cf_range(1, fr) = temp_id_range(start1)*pi/180;
+		cf_range(2, fr) = temp_id_range(end1)*pi/180;
 	end
 
 	if ~any(cf_feasible)
@@ -246,15 +235,81 @@ end
 % -----------------------------------------
 % 	Optimization: find gripper trajectory
 % -----------------------------------------
-rtype       = zeros(1, Ng); % 1: pivotable, 0: roll
-tilt_range  = zeros(2, Ng); % min (right), max (left)
-cf_range    = zeros(2, Ng); % min (right), max (left)
-paraOptGRP.N          = Ng;
-paraOptGRP.rtype      = rtype;
-paraOptGRP.tilt_range = tilt_range;
-paraOptGRP.cf_range   = cf_range;
+global paraOptGRP
+% get initial/final grasps
+grp_ang0             = [];
+grp_angf             = [];
+paraOptGRP.x0_k = 0;
+paraOptGRP.xf_k = 0;
 
-minimize gripper motion
+if ~isempty(qg0)
+	qg0z                 = quatOnVec([0 0 1]', qg0);
+	qfr0                 = getProperGraspSimple(grasp_id, qobj(:, 1));
+	qg0z_o               = quatOnVec(qg0z, quatInv(qfr0));
+	grp_ang0             = angBTVec([0 0 1]', qg0z_o, [1 0 0]'); % range: -pi ~ pi
+	paraOptGRP.x0_k = 1;
+end
+
+if ~isempty(qgf)
+	qgfz                 = quatOnVec([0 0 1]', qgf);
+	qfrf                 = getProperGraspSimple(grasp_id, qobj(:, end));
+	qgfz_o               = quatOnVec(qgfz, quatInv(qfrf));
+	grp_ang0             = angBTVec([0 0 1]', qgfz_o, [1 0 0]'); % range: -pi ~ pi
+	paraOptGRP.xf_k = 1;
+end
+
+
+% check range
+xrange      = zeros(2, Ng);
+xrange(1,:) = max(tilt_range(1,:), cf_range(1,:));
+xrange(2,:) = min(tilt_range(1,:), cf_range(1,:));
+if any(xrange(2,:) < xrange(1,:))
+	flag = -6;
+	return;
+end
+temp = rand(1, Ng);
+x    = temp.*xrange(1,:) + (1-temp).*xrange(2,:);
+x    = x';
+
+paraOptGRP.range        = xrange;
+paraOptGRP.N            = Ng;
+paraOptGRP.rtype        = rtype;
+paraOptGRP.obj_rotation = obj_rotation;
+paraOptGRP.x0           = grp_ang0;
+paraOptGRP.xf           = grp_angf;
+
+
+snoptOPT.spc = which('../optimization/snoptfiles/snoptOPT_GRP.spc');
+snspec ( snoptOPT.spc );
+snseti ('Major Iteration limit', 50);
+snset  ('Minimize');
+snprint('../optimization/snoptfiles/snoptOPT_GRP.out');
+[~, Flow, Fupp, xlow, xupp] = FUNOPT_GRP(x, paraOptGRP);
+tic
+[x,F,INFO] = snopt(x,xlow,xupp,Flow,Fupp,'FUNOPT_GRPWrapper');
+toc
+snprint off; % Closes the file and empties the print buffer
+
+% check results
+[con_x, con_f] = checkConstraint(x, paraOptGRP, @FUNOPT_GRP, xlow, xupp, Flow, Fupp);
+
+if norm(con_x)+norm(con_f) > 0.1
+	% infeaseble 
+	flag = -5;
+	return;
+end	
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -565,5 +620,9 @@ sf_range(ids) = true;
 end
 
 
-
-
+function [z0_ang, z0_id] = getIDinCfRange(qg, q, refz_o, refx_o)
+	qgz    = quatOnVec([0 0 1]', qg);
+	qgz_o  = quatOnVec(qgz, quatInv(q));
+	z0_ang = angBTVec(refz_o, qgz_o, refx_o, 1);
+	z0_id  = round(180/pi*z0_ang);
+end
