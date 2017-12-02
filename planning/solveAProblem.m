@@ -112,6 +112,8 @@ while true
                         dispC(['  --- Grasp ' num2str(i) ' [q obj optimization] infeasible ']);
                     case -6
                         dispC(['  --- Grasp ' num2str(i) ' [q obj checking] no collision free path ']);
+                    case -7
+                        dispC(['  --- Grasp ' num2str(i) ' [QP for GRP] infeasible ']);
                     otherwise
                         error('Wrong flag');
                 end

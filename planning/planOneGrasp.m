@@ -76,16 +76,18 @@ end
 N = 20;
 x = (2*rand(3*N,1) - 1)*pi;
 
-global paraOptOBJ
-paraOptOBJ.delta_theta   = 0.05; % rad
-paraOptOBJ.q0            = q0;
-paraOptOBJ.qf            = qf;
-paraOptOBJ.qf_inv        = quatInv(qf);
-paraOptOBJ.Gp1o          = gp1o_w;
-paraOptOBJ.Gp2o          = gp2o_w;
-paraOptOBJ.Gp_tilt_limit = para.GRIPPER_TILT_LIMIT;
-paraOptOBJ.cost_goal_k   = para.cost_goal_k;
-paraOptOBJ.cost_tilt_k   = para.cost_tilt_k;
+global paraOpt_OBJ
+paraOpt_OBJ.delta_theta   = 0.05; % rad
+paraOpt_OBJ.q0            = q0;
+paraOpt_OBJ.qf            = qf;
+paraOpt_OBJ.qf_inv        = quatInv(qf);
+paraOpt_OBJ.Gp1o          = gp1o_w;
+paraOpt_OBJ.Gp2o          = gp2o_w;
+paraOpt_OBJ.Gp_tilt_limit = para.GRIPPER_TILT_LIMIT;
+paraOpt_OBJ.cost_dq_k    = para.opt_obj_cost_k_dq;
+paraOpt_OBJ.cost_tilt_k   = para.opt_obj_cost_k_tilt;
+paraOpt_OBJ.exactqf_k     = exactq;
+
 
 snoptOPT.spc = which('../optimization/snoptfiles/snoptOPT_OBJ.spc');
 snspec ( snoptOPT.spc );
@@ -93,22 +95,20 @@ snseti ('Major Iteration limit', 50);
 snset  ('Minimize');
 
 snprint('../optimization/snoptfiles/snoptOPT_OBJ.out');
-[~, Flow, Fupp, xlow, xupp] = FUNOPT_OBJ(x, paraOptOBJ);
+[~, Flow, Fupp, xlow, xupp] = FUNOPT_OBJ(x, paraOpt_OBJ);
 tic
 [x,F,INFO] = snopt(x,xlow,xupp,Flow,Fupp,'FUNOPT_OBJWrapper');
 toc
 snprint off; % Closes the file and empties the print buffer
 
 % check results
-[con_x, con_f] = checkConstraint(x, paraOptOBJ, @FUNOPT_OBJ, xlow, xupp, Flow, Fupp);
+[con_x, con_f] = checkConstraint(x, paraOpt_OBJ, @FUNOPT_OBJ, xlow, xupp, Flow, Fupp);
 
 if norm(con_x)+norm(con_f) > 0.1
 	% infeaseble 
 	flag = -5;
 	return;
 end	
-
-
 
 % read results
 n = zeros(3, N);
@@ -135,12 +135,13 @@ qobj = quatSquad(0:N-1, qobj, (0:Ng-1)/(Ng-1)*(N-1));
 % 	gripper feasible range (tilting range)
 % 	collision free range
 rtype        = zeros(1, Ng); % 1: pivotable, 0: roll
+stype        = zeros(1, Ng); % 1: sliding, 0: sticking
 obj_rotation = zeros(1, Ng); % rotation of object measured in grasp frame
 tilt_range   = zeros(2, Ng); % min (right), max (left)
 cf_range     = zeros(2, Ng); % min (right), max (left)
 
 for fr = 1:Ng
-	qp = qobj(:, fr);
+	qp   = qobj(:, fr);
 	m_fr = quat2m(qp);
 
 	% 
@@ -228,26 +229,32 @@ for fr = 1:Ng
 	if (cp_l*com_GF(2) > 0) && (cp_r*com_GF(2) > 0)
 		rtype(fr) = 1;
 	end
+
+	% 
+	% Check slidability
+	% 
+	
 	
 end
 
 
 % -----------------------------------------
 % 	Optimization: find gripper trajectory
+% 	Formulated as a QP
 % -----------------------------------------
-global paraOptGRP
+
 % get initial/final grasps
-grp_ang0             = [];
-grp_angf             = [];
-paraOptGRP.x0_k = 0;
-paraOptGRP.xf_k = 0;
+grp_ang0        = [];
+grp_angf        = [];
+paraOpt_GRP.x0_k = 0;
+paraOpt_GRP.xf_k = 0;
 
 if ~isempty(qg0)
 	qg0z                 = quatOnVec([0 0 1]', qg0);
 	qfr0                 = getProperGraspSimple(grasp_id, qobj(:, 1));
 	qg0z_o               = quatOnVec(qg0z, quatInv(qfr0));
 	grp_ang0             = angBTVec([0 0 1]', qg0z_o, [1 0 0]'); % range: -pi ~ pi
-	paraOptGRP.x0_k = 1;
+	paraOpt_GRP.x0_k = 1;
 end
 
 if ~isempty(qgf)
@@ -255,9 +262,8 @@ if ~isempty(qgf)
 	qfrf                 = getProperGraspSimple(grasp_id, qobj(:, end));
 	qgfz_o               = quatOnVec(qgfz, quatInv(qfrf));
 	grp_ang0             = angBTVec([0 0 1]', qgfz_o, [1 0 0]'); % range: -pi ~ pi
-	paraOptGRP.xf_k = 1;
+	paraOpt_GRP.xf_k = 1;
 end
-
 
 % check range
 xrange      = zeros(2, Ng);
@@ -271,12 +277,19 @@ temp = rand(1, Ng);
 x    = temp.*xrange(1,:) + (1-temp).*xrange(2,:);
 x    = x';
 
-paraOptGRP.range        = xrange;
-paraOptGRP.N            = Ng;
-paraOptGRP.rtype        = rtype;
-paraOptGRP.obj_rotation = obj_rotation;
-paraOptGRP.x0           = grp_ang0;
-paraOptGRP.xf           = grp_angf;
+paraOpt_GRP.range        = xrange;
+paraOpt_GRP.N            = Ng;
+paraOpt_GRP.rtype        = rtype;
+paraOpt_GRP.obj_rotation = obj_rotation;
+paraOpt_GRP.x0           = grp_ang0;
+paraOpt_GRP.xf           = grp_angf;
+paraOpt_GRP.Qreg         = 1e-3;
+
+[Q, A, B, Flow, Fupp, xlow, xupp] = FUNOPT_GRP_Precomputation(x, paraOpt_GRP);
+[iAfun, jAvar, A] = find([zeros(size(x'*Q)); A]);
+[iGfun, jGvar]    = find(ones(size(Q*x)));
+global paraQ
+paraQ = Q;
 
 
 snoptOPT.spc = which('../optimization/snoptfiles/snoptOPT_GRP.spc');
@@ -284,20 +297,51 @@ snspec ( snoptOPT.spc );
 snseti ('Major Iteration limit', 50);
 snset  ('Minimize');
 snprint('../optimization/snoptfiles/snoptOPT_GRP.out');
-[~, Flow, Fupp, xlow, xupp] = FUNOPT_GRP(x, paraOptGRP);
+[~, Flow, Fupp, xlow, xupp] = FUNOPT_GRP(x, paraOpt_GRP);
 tic
 [x,F,INFO] = snopt(x,xlow,xupp,Flow,Fupp,'FUNOPT_GRPWrapper');
 toc
 snprint off; % Closes the file and empties the print buffer
 
 % check results
-[con_x, con_f] = checkConstraint(x, paraOptGRP, @FUNOPT_GRP, xlow, xupp, Flow, Fupp);
+con_f = A*x - B;
+con_x = zeros(Ng, 2);
+for i = 1:length(x)
+	if x(i) < xlow(i)
+		con_x(i, 1) = xlow(i) - x(i);
+	end
+
+	if x(i) > xupp(i)
+		con_x(i, 2) = x(i) - xupp(i);
+	end
+end
+
+% % plot the planning problem for grp
+% figure(1); clf(1);hold on;
+% plot([1:N], x,'- .b');
+% plot(find(paraOpt_GRP.rtype~=0), x(paraOpt_GRP.rtype~=0),'og');
+% plot([1:N], xrange(1,:), '-r');
+% plot([1:N], xrange(2,:), '-r');
+% plot(1, paraOpt_GRP.x0, '.k', 'markersize',10);
+% plot(N, paraOpt_GRP.xf, '.k', 'markersize',10);
 
 if norm(con_x)+norm(con_f) > 0.1
 	% infeaseble 
 	flag = -5;
 	return;
 end	
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
