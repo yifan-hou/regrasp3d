@@ -10,7 +10,7 @@ function [Q, A, B, Flow, Fupp, xlow, xupp] = FUNOPT_GRP_Precomputation(x, para)
 
 N = para.N;
 para_obj_rotation = para.obj_rotation;
-para_rtype        = para.rtype;
+para_rtype        = para.rtype; % 1: pivoting
 para_range        = para.range;
 para_x0           = para.x0;
 para_xf           = para.xf;
@@ -32,10 +32,10 @@ para_range(2,N) = para_range(2,N)*(1-para_xf_k) + para_xf*para_xf_k;
 % 
 % rtype
 % 
-Rt = diag(para_rtype(1:end-1));
+Rt = diag(1 - para_rtype(1:end-1));
 U = [zeros(N-1,1) diag(ones(N-1, 1))];
 L = [diag(ones(N-1,1)) zeros(N-1, 1)];
-b = para_obj_rotation(1:end-1)';
+b = - para_obj_rotation(2:end)' + para_obj_rotation(1:end-1)';
 A = Rt*(U-L);
 B = Rt*b;
 

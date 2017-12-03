@@ -1,11 +1,11 @@
-function [path_found, plan_3d] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f, method)
+function [path_found, plan] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f, method)
 global para fgraph pgraph mesh gripper grasps % inputs
 
 addpath ../optimization/autodiff_generated
 addpath ../optimization/snoptfiles
 addpath ../optimization/
 
-plan_3d = [];
+plan = [];
 % treat initial/final pose as additional mode
 % build the full graph
 dispC('[Planning] Building Full Graph:');
@@ -64,7 +64,7 @@ while true
 
 	path_q       = zeros(4, NP);
 	path_graspid = zeros(1, NP-1);
-	plan_2d      = cell(1,  NP-1);
+	plan         = cell(1,  NP-1);
 
 	% motion planning for each edge on the path
 	path_q(:,1) = q0;
@@ -93,9 +93,9 @@ while true
 			path_graspid(p) = id_common(i);
 
 			if strcmp(method, 'pickplace')
-				[plan_2d_temp, flag] = planOneGraspPickPlace(id_common(i), path_q(:,p), path_q(:,p+1), qg0_p, qgf_p);
+				[plan_one_grasp, flag] = planOneGraspPickPlace(id_common(i), path_q(:,p), path_q(:,p+1), qg0_p, qgf_p);
 			else
-				[plan_2d_temp, flag] = planOneGrasp(id_common(i), path_q(:,p), path_q(:,p+1), qg0_p, qgf_p, exactq);
+				[plan_one_grasp, flag] = planOneGrasp(id_common(i), path_q(:,p), path_q(:,p+1), qg0_p, qgf_p, exactq);
 			end
 
 		    if flag <= 0
@@ -119,14 +119,15 @@ while true
                 end
 		        continue;
 		    else
-				plan_2d{p}   = plan_2d_temp;
+				plan{p}        = plan_one_grasp;
+				path_q(:, p+1) = plan_one_grasp.qobj(:, end);
 		        dispC(['  --- Grasp ' num2str(i) ' works.']);
 		        break;
 		    end
 			% gripper motion closed loop control
 		end
 
-		if isempty(plan_2d{p})
+		if isempty(plan{p})
 			dispC(['  Edge #' num2str(p) ' No solution.']);
 			adj_matrix(mode_id_path(p), mode_id_path(p+1)) = 0;
 			adj_matrix(mode_id_path(p+1), mode_id_path(p)) = 0;
@@ -138,7 +139,6 @@ while true
 	end % end a path
 
 	if path_found
-		plan_3d   = plan3D(plan_2d);
 		dispC(['[Planning] Solution found. Length = ' num2str(NP) ]);
 		break;
 	end

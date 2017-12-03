@@ -1,13 +1,13 @@
 % gp: grasp points in world frame
 % q: 4x1
-function animatePlan(fidOrhandle, plan_3d)
+function animatePlan(fidOrhandle, plan)
 global mesh gripper 
 
 % --------------------------------------
 % 	draw and get the handles
 % --------------------------------------
 % object states
-q0        = plan_3d.qobj{1}(:,1);
+q0        = plan{1}.qobj(:,1);
 m0_o      = quat2m(q0);
 com_w     = m0_o*mesh.COM;
 points_w  = m0_o*(mesh.vertices');
@@ -30,7 +30,7 @@ cp_w      = points_w(:,cpid);
 hold on;
 % object
 handles_object.surf    = plotObject(mesh, fidOrhandle, q0); % call plotObject without handle argument will clean the figure
-handles_gripper        = plotGripper(fidOrhandle, gripper, q0, [plan_3d.gp1{1}(:,1) plan_3d.gp2{1}(:,1)], plan_3d.qgrp{1}(:,1));
+handles_gripper        = plotGripper(fidOrhandle, gripper, q0, [plan{1}.gp1(:,1) plan{1}.gp2(:,1)], plan{1}.qgrp(:,1));
 handles_object.cp      = plot3(cp_w(1,:), cp_w(2,:), cp_w(3,:), '.k', 'markersize', 30);
 handles_object.com     = plot3(com_w(1), com_w(2), com_w(3), 'r*', 'markersize', 8);
 handles_object.gravity = plot3(com_w(1)+[0 0], com_w(2)+[0 0], com_w(3)+[0 -0.4], 'r-', 'linewidth', 2);
@@ -73,18 +73,15 @@ axis off
 % --------------------------------------
 % 	Begin Animation
 % --------------------------------------
-
-
-NP = length(plan_3d.qobj);
-for p = 1:NP
-	for fr = 1:size(plan_3d.qobj{p}, 2)
-		qobj  = plan_3d.qobj{p}(:, fr);
-		qgrp  = plan_3d.qgrp{p}(:, fr);
-		gp1   = plan_3d.gp1{p}(:, fr);
-		gp2   = plan_3d.gp2{p}(:, fr);
-		trans = plan_3d.trans{p}(:, fr);
-		rtype = plan_3d.rtype{p}(fr);
-		stype = plan_3d.stype{p}(fr);
+N = length(plan);
+for p = 1:N
+	for fr = 1:plan{p}.N
+		qobj  = plan{p}.qobj(:, fr);
+		qgrp  = plan{p}.qgrp(:, fr);
+		gp1   = plan{p}.gp1(:, fr);
+		gp2   = plan{p}.gp2(:, fr);
+		trans = plan{p}.trans(:, fr);
+		rtype = plan{p}.rtype(fr);
 
 		if rtype
 			handles_gripper.fingertip_plus.FaceColor  = [0.9 0.1 0];
@@ -95,9 +92,8 @@ for p = 1:NP
 		end
 
 		updatePlot(qobj, qgrp, gp1, gp2, trans, gripper, mesh.COM, mesh.vertices', handles_object, handles_gripper);
-%         pause(0.1);
+        pause(0.1);
 	end
-	pause(0.5);
 end
 
 
@@ -130,7 +126,7 @@ function updatePlot(qobj, qgp0, gp1, gp2, trans, gripper, com, points, handles_o
 	handles_object.surf.Vertices   = ps_';
 
 	plotGripper([], gripper, qobj, [gp1 gp2], qgp0, handles_gripper);
-	 
+	
 
 	% axis([com_(1)-1 com_(1)+1 com_(2)-1 com_(2)+1 com_(3)-1 com_(3)+1]);
 	% axis equal;

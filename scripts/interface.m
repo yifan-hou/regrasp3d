@@ -104,8 +104,10 @@ para.PIVOTABLE_CHECK_GRANULARITY = 1*pi/180; % 1 sample every 1 degree
 para.COLLISION_FREE_ANGLE_MARGIN = 5; % stay away from collsion for at least 5 degrees
 									  % has to be an positive integer
 % optimization parameter
-para.cost_goal_k    = 10;
-para.cost_goal_tilt = 1;
+para.opt_obj_N               = 20;
+para.opt_obj_con_delta_theta = 0.3;
+para.opt_obj_cost_k_dq       = 2;
+para.opt_obj_cost_k_tilt     = 1;
 
 % ploting control
 para.showCheckedGrasp     = true;
@@ -154,7 +156,7 @@ set(handles.BTN_rand_final, 'Enable', 'on');
 function BTN_plan_Callback(hObject, eventdata, handles)
 clc;
 global para fgraph pgraph mesh gripper grasps q0 qf qg0 qgf% inputs
-global path_found plan_3d % outputs
+global path_found plan % outputs
 global grasp_id_0 grasp_id_f
 
 disp('[Planning] Planning begin.');
@@ -174,7 +176,7 @@ para.printing = true;
 % method = 'pickplace';
 method = 'pivoting';
 % load debug
-[path_found, plan_3d] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f, method);
+[path_found, plan] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f, method);
 
 
 if path_found
@@ -197,11 +199,10 @@ plotObject(mesh, handles.AX_final, qf);
 
 
 function BTN_animate_Callback(hObject, eventdata, handles)
-global path_found plan_3d
+global path_found plan
 
 if path_found
-	animatePlan(5, plan_3d);
-	% animatePlan(handles.AX_animation, plan_3d);
+	animatePlan(5, plan);
 end
 
 
