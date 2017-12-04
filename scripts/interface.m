@@ -94,15 +94,13 @@ load(filename);
 % -----------------------------------------------
 % 		Offline-computation
 % -----------------------------------------------
-% friction between object and  ground
-para.MU = 0.5;
 
 % planning parameter
-para.GRIPPER_TILT_LIMIT          = 40*pi/180; % tilting angle tolerance
-para.GRIPPER_Z_LIMIT             = 0.2; % finger position limit
-para.PIVOTABLE_CHECK_GRANULARITY = 1*pi/180; % 1 sample every 1 degree
-para.COLLISION_FREE_ANGLE_MARGIN = 5; % stay away from collsion for at least 5 degrees
-									  % has to be an positive integer
+para.GRIPPER_TILT_LIMIT = 80*pi/180; % tilting angle tolerance
+para.GRIPPER_Z_LIMIT    = 10; % finger position limit
+
+
+									  
 % optimization parameter
 para.opt_obj_N               = 20;
 para.opt_obj_con_delta_theta = 0.3;
@@ -114,10 +112,6 @@ para.showCheckedGrasp     = true;
 para.showCheckedGrasp_id  = 1;
 para.showGraspChecking    = false;
 para.showGraspChecking_id = [2 3];
-para.showProblem          = false;
-para.showProblem_id       = [1 2 3];
-para.show2Dproblem        = false;
-para.show2Dproblem_id     = 4;
 para.printing 			  = true; % control any printing outside of 'interface.m'
 
 

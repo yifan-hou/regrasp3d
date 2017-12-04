@@ -1,7 +1,7 @@
 % object def
 % 	mlist: list of modes
 %	plist: list of vertices of mesh model
-function [fgraph, pgraph, mesh, mesh_s] = getObject(para, stlname) 
+function [fgraph, pgraph, mesh, mesh_s] = getObject(para, COM, stlname) 
 
 disp('[GetObject] Reading STL model..');
 fv          = stlread(stlname);
@@ -13,11 +13,11 @@ disp('[GetObject] Processing Model..');
 % --------------------------------------------
 % 		geometry
 % --------------------------------------------
-% scaling
-L = max([max(fv.vertices(:, 1)) - min(fv.vertices(:, 1)), 
-		 max(fv.vertices(:, 2)) - min(fv.vertices(:, 2)), 
-		 max(fv.vertices(:, 3)) - min(fv.vertices(:, 3))]);
-fv.vertices = fv.vertices/L;
+% % scaling
+% L = max([max(fv.vertices(:, 1)) - min(fv.vertices(:, 1)), 
+% 		 max(fv.vertices(:, 2)) - min(fv.vertices(:, 2)), 
+% 		 max(fv.vertices(:, 3)) - min(fv.vertices(:, 3))]);
+% fv.vertices = fv.vertices/L;
 
 points = fv.vertices';
 faces  = fv.faces';
@@ -25,18 +25,8 @@ NP     = size(points, 2);
 % NF     = size(faces, 2);
 disp(['[GetObject] Points on Model: ' num2str(NP) ]);
 
-% calculate center of mass
-COM = mean(points, 2); % an estimation
-
-% calculate the area of each triangle
-A = points(:, faces(1,:));
-B = points(:, faces(2,:));
-C = points(:, faces(3,:));
-a = normByCol(A-B);
-b = normByCol(B-C);
-c = normByCol(C-A);
-p = (a+b+c)/2;
-area = sqrt(p.*(p-a).*(p-b).*(p-c));
+% % calculate center of mass
+% COM = mean(points, 2); % an estimation
 
 % --------------------------------------------
 % 		Decimated Mesh
@@ -49,7 +39,20 @@ else
 	mesh_s.err_bound = 0;
 end
 disp(['[GetObject] Mesh Approximation Error: ' num2str(mesh_s.err_bound) ]);
-% assert(mesh_s.err_bound < 1e-2, 'Approximation Error is too large.');
+points_s = fv.vertices';
+faces_s  = fv.faces';
+
+mesh_s.COM      = COM;
+
+% calculate the area of each triangle
+A = points_s(:, faces_s(1,:));
+B = points_s(:, faces_s(2,:));
+C = points_s(:, faces_s(3,:));
+a = normByCol(A-B);
+b = normByCol(B-C);
+c = normByCol(C-A);
+p = (a+b+c)/2;
+mesh_s.area = sqrt(p.*(p-a).*(p-b).*(p-c));
 
 % --------------------------------------------
 % 		Convex Hull
@@ -105,6 +108,57 @@ for m = 1:NFC
 end
 NFS    = sum(m_is_stable);
 m_quat = m_quat(:, m_is_stable); % quaternion to transform Normal to [0 0 1]
+% get rid of same orientations
+if NFS > 1
+	m_unique = true(1, NFS);
+	for i = 2:NFS
+		for j = 1:i-1
+			if abs(angBTquat(m_quat(:,i), m_quat(:,j))) < 1e-3
+				m_unique(i) = false;
+			end
+		end
+	end
+	NFS    = sum(m_unique);
+	m_quat = m_quat(:, m_unique);
+end
+% get rid of unstable modes
+m_is_stable = true(1, NFS);
+points_r = fvr.vertices';
+for i = 1:NFS
+	points_r_rot = quatOnVec(points_r, m_quat(:,i));
+	zmin         = min(points_r_rot(3,:));
+	id_contacts  = find(points_r_rot(3,:) < zmin + para.bottom_height_tol);
+	spp_id       = convhull(points_r_rot(1, id_contacts), points_r_rot(2, id_contacts));
+	spp          = points_r_rot(1:2, id_contacts(spp_id)); % a convex support polygon
+	A            = polyarea(spp(1,:), spp(2,:));
+	if A < para.minimal_support_polygon_area
+		m_is_stable(i) = false;
+	end
+end
+NFS    = sum(m_is_stable);
+m_quat = m_quat(:, m_is_stable);
+
+m_is_stable = true(1, NFS);
+disp('[GetObject] Stable modes manual checking:');
+for i=1:NFS
+    plotObject(mesh_s, 1, m_quat(:,i));
+    % Construct a questdlg with two options
+    choice = questdlg('Accept this stable pose?', ...
+	'Stable Pose Checking', ...
+    'Yes please','No thank you','No thank you');
+    % Handle response
+    switch choice
+        case 'Yes please'
+            disp('Pose accepted.')
+            m_is_stable(i) = true;
+        case 'No thank you'
+            disp('Pose rejected');
+            m_is_stable(i) = false;
+    end
+end
+NFS    = sum(m_is_stable);
+m_quat = m_quat(:, m_is_stable);
+
 disp(['[GetObject] Stable modes: ' num2str(NFS) ]);
 
 % --------------------------------------------
@@ -125,8 +179,7 @@ pgraph.adj_matrix = pch_adj_matrix;
 % full mesh
 mesh.faces    = faces'; % Nx3, common mesh convention in matlab
 mesh.vertices = points'; 
-mesh.COM      = COM;
-mesh.area     = area;
+% mesh.area     = area;
 
 disp('[GetObject] Model Processing Done.');
 

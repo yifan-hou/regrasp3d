@@ -6,7 +6,7 @@
 % 	feasible_range: 360x1.   1: collision free. 0: has collision
 % 	qgrasp:	4x1, a quaternion frame. x axis: gp(:,1) - gp(:,2), z axis: theta = 0
 function [feasible_range, qgrasp] = gripperCollisionCheck(mesh, mesh_s, gripper, gp, para)
-DELTA          = 1e-3;
+
 feasible_range = [];
 
 % ----------------------------------------------
@@ -23,45 +23,28 @@ qgrasp = getProperGraspSimple(gp(:,1), gp(:,2));
 
 % open finger a little big when checking fingertip,
 % in case the grasp is tilting
-FINGERTIP_DIAMETER = 0.06;
-space              = FINGERTIP_DIAMETER/2*sin(para.ANGLE_TOL) + 0.01;
+space              = 3; %mm
 ax                 = quatOnVec([1 0 0]', qgrasp); ax = ax/norm(ax);
 gp_delta           = gp;
-gp_delta(:, 1)     = gp(:, 1) + (DELTA + space)*ax;
-gp_delta(:, 2)     = gp(:, 2) - (DELTA + space)*ax;
+gp_delta(:, 1)     = gp(:, 1) + space*ax;
+gp_delta(:, 2)     = gp(:, 2) - space*ax;
 
-% figure(1);clf(1);
-% plotObject(mesh, 1);
-% plotGripper(1, gripper, [1 0 0 0]', gp, qgrasp);
+figure(1);clf(1);
+plotObject(mesh, 1);
+plotGripper(1, gripper, [1 0 0 0]', gp, qgrasp);
 
-% fingertip_plus.vertices  = bsxfun(@plus, quatOnVec(gripper.vertices_safe{1}, qgrasp), gp_delta(:, 1))';
-% fingertip_minus.vertices = bsxfun(@plus, quatOnVec(gripper.vertices_safe{2}, qgrasp), gp_delta(:, 2))';
-% fingertip_plus.faces     = gripper.faces{1};
-% fingertip_minus.faces    = gripper.faces{2};
-
-% % check with coarse model
-% [~, surf] = SurfaceIntersection(mesh_s, fingertip_plus, 'debug', false);
-% if checkResult(surf)
-% 	return;
-% end
-% [~, surf] = SurfaceIntersection(mesh_s, fingertip_minus, 'debug', false);
-% if checkResult(surf)
-% 	return;
-% end
-
-% gp_delta(:, 1) = gp(:, 1) + DELTA*ax;
-% gp_delta(:, 2) = gp(:, 2) - DELTA*ax;
 fingertip_plus.vertices  = bsxfun(@plus, quatOnVec(gripper.vertices_safe{1}, qgrasp), gp_delta(:, 1))';
 fingertip_minus.vertices = bsxfun(@plus, quatOnVec(gripper.vertices_safe{2}, qgrasp), gp_delta(:, 2))';
 fingertip_plus.faces     = gripper.faces{1};
 fingertip_minus.faces    = gripper.faces{2};
 
+
 % check with precise model
-[~, surf] = SurfaceIntersection(mesh, fingertip_plus, 'debug', false);
+[~, surf] = SurfaceIntersection(mesh_s, fingertip_plus, 'debug', false);
 if checkResult(surf)
 	return;
 end
-[~, surf] = SurfaceIntersection(mesh, fingertip_minus, 'debug', false);
+[~, surf] = SurfaceIntersection(mesh_s, fingertip_minus, 'debug', false);
 if checkResult(surf)
 	return;
 end

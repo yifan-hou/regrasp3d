@@ -70,6 +70,3 @@ for j = 1:grasps.count
 	end
 
 end
-
-
-

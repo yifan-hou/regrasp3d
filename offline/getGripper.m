@@ -4,13 +4,13 @@
 % palm is to the top of the fingers.
 % vertices_list: fingertip_plus, fingertip_minus, palm
 function [gripper] = getGripper() 
-FINGERTIP_DIAMETER  = 0.06;
-FIGNERTIP_EDGES     = 8;
-FIGNERTIP_THICKNESS = 0.1;
-FINGER_WIDTH        = 0.7*FINGERTIP_DIAMETER;
-FINGER_THICKNESS    = 0.05;
-PALM_HEIGHT         = 0.7;
-PALM_WIDTH          = 0.3;
+FINGERTIP_RADIUS  = 10;
+FIGNERTIP_EDGES     = 15;
+FIGNERTIP_THICKNESS = 9.3;
+FINGER_WIDTH        = 20;
+FINGER_THICKNESS    = 6.7;
+PALM_HEIGHT         = 60;
+PALM_WIDTH          = 49;
 
 vertices_list      = cell(5,1);
 vertices_safe_list = cell(5,1);
@@ -19,8 +19,8 @@ faces_list         = cell(5,1);
 % fingertips
 pad      = zeros(3, FIGNERTIP_EDGES); % in y-z plane
 angles   = 2*pi*(1:FIGNERTIP_EDGES)/FIGNERTIP_EDGES;
-pad(2,:) = FINGERTIP_DIAMETER*sin(angles);
-pad(3,:) = FINGERTIP_DIAMETER*cos(angles);
+pad(2,:) = FINGERTIP_RADIUS*sin(angles);
+pad(3,:) = FINGERTIP_RADIUS*cos(angles);
 
 pad_minus = pad; pad_minus(1, :) = pad_minus(1, :) - FIGNERTIP_THICKNESS;
 pad_plus  = pad; pad_plus(1, :)  = pad_plus(1, :)  + FIGNERTIP_THICKNESS;
@@ -77,10 +77,18 @@ gripper.faces         = faces_list;
 
 
 % % debug
+
+% % Note
+% % vertices_list is used for visualization
+% % vertices_safe_list is used for collision checking
+
 % figure(1);clf;hold on;
-% trisurf(gripper.faces{1}, vertices_safe_list{1}(1,:), vertices_safe_list{1}(2,:), vertices_safe_list{1}(3,:), 'Facecolor', 'k', 'FaceAlpha', 0.3);
-% trisurf(gripper.faces{2}, vertices_safe_list{2}(1,:), vertices_safe_list{2}(2,:), vertices_safe_list{2}(3,:), 'Facecolor', 'k', 'FaceAlpha', 0.3);
-% trisurf(gripper.faces{3}, vertices_safe_list{3}(1,:), vertices_safe_list{3}(2,:), vertices_safe_list{3}(3,:), 'Facecolor', 'b', 'FaceAlpha', 0.7);
-% trisurf(gripper.faces{4}, vertices_safe_list{4}(1,:), vertices_safe_list{4}(2,:), vertices_safe_list{4}(3,:), 'Facecolor', 'b', 'FaceAlpha', 0.7);
+% trisurf(gripper.faces{1}, vertices_list{1}(1,:), vertices_list{1}(2,:), vertices_list{1}(3,:), 'Facecolor', 'k', 'FaceAlpha', 0.3);
+% trisurf(gripper.faces{2}, vertices_list{2}(1,:), vertices_list{2}(2,:), vertices_list{2}(3,:), 'Facecolor', 'k', 'FaceAlpha', 0.3);
+% trisurf(gripper.faces{3}, vertices_list{3}(1,:), vertices_list{3}(2,:), vertices_list{3}(3,:), 'Facecolor', 'b', 'FaceAlpha', 0.7);
+% trisurf(gripper.faces{4}, vertices_list{4}(1,:), vertices_list{4}(2,:), vertices_list{4}(3,:), 'Facecolor', 'b', 'FaceAlpha', 0.7);
 % trisurf(gripper.faces{5}, [palm_plus(1,:) palm_side(1,:)], [palm_plus(2,:) palm_side(2,:)], [palm_plus(3,:) palm_side(3,:)], 'Facecolor', 'b', 'FaceAlpha', 0.7);
 % axis equal;
+% xlabel('x');
+% ylabel('y');
+% zlabel('z');
