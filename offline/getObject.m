@@ -43,6 +43,7 @@ points_s = fv.vertices';
 faces_s  = fv.faces';
 
 mesh_s.COM      = COM;
+mesh.COM      = COM;
 
 % calculate the area of each triangle
 A = points_s(:, faces_s(1,:));

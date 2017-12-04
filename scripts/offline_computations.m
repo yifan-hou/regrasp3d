@@ -20,14 +20,14 @@ para.minimal_support_polygon_area = 200; % mm^2
 % Grasp sampling
 para.NGS                   = 100; % maximum number of grasp pos samplings
 para.N_RESAMPLE            = 5;   % if a sequence of N samples are all close to previous grasps, then stop 
-para.ANGLE_TOL             = 2*pi/180; % rad  % grasp axis tolerance
+para.ANGLE_TOL             = 1*pi/180; % rad  % grasp axis tolerance
 para.COM_DIST_LIMIT        = 10; % minimum distance between grasp axis and COM
 para.GRASP_DIST_LIMIT      = 5; % minimum distance to other grasps
 para.POINTJ_SAMPLE_DENSITY = 0.03; % # of points per mm^2
-para.grasp_travel = 90-10;
+para.grasp_travel          = 90-10;
 
 % convex hull simplification parameters
-para.NF_CVR = 80; % target number of faces on the simplified convex hull
+para.NF_CVR      = 80; % target number of faces on the simplified convex hull
 para.err_tol_CVR = 5;
 
 % collision checking
@@ -52,6 +52,7 @@ COM = [
 	   0 -4.647 13.27; % steel hook
 	   -10 10 0 % pipe fitting
 	   ]';
+
 for i = 1:length(file_dir)
 	% 
 	% get file name
@@ -71,7 +72,14 @@ for i = 1:length(file_dir)
 	% 
 	% compute grasps
 	% 
-    [grasps, fgraph] = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para);
+    % [grasps, fgraph] = calGrasp(fgraph, pgraph, mesh, mesh_s, gripper, para);
+	clickGrasp(mesh_s, gripper, para);
+    
+    % breakpoint here!
+    disp('Put break point here!!!');
+    
+	[grasps, fgraph] = checkGrasp4StableMode(fgraph, pgraph, mesh, para);
+
 
 	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps', 'gripper');
 end

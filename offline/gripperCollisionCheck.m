@@ -5,7 +5,7 @@
 % output
 % 	feasible_range: 360x1.   1: collision free. 0: has collision
 % 	qgrasp:	4x1, a quaternion frame. x axis: gp(:,1) - gp(:,2), z axis: theta = 0
-function [feasible_range, qgrasp] = gripperCollisionCheck(mesh, mesh_s, gripper, gp, para)
+function [feasible_range, qgrasp] = gripperCollisionCheck(mesh, gripper, gp, para)
 
 feasible_range = [];
 
@@ -29,9 +29,9 @@ gp_delta           = gp;
 gp_delta(:, 1)     = gp(:, 1) + space*ax;
 gp_delta(:, 2)     = gp(:, 2) - space*ax;
 
-figure(1);clf(1);
-plotObject(mesh, 1);
-plotGripper(1, gripper, [1 0 0 0]', gp, qgrasp);
+% figure(1);clf(1);
+% plotObject(mesh, 1);
+% plotGripper(1, gripper, [1 0 0 0]', gp, qgrasp);
 
 fingertip_plus.vertices  = bsxfun(@plus, quatOnVec(gripper.vertices_safe{1}, qgrasp), gp_delta(:, 1))';
 fingertip_minus.vertices = bsxfun(@plus, quatOnVec(gripper.vertices_safe{2}, qgrasp), gp_delta(:, 2))';
@@ -40,11 +40,11 @@ fingertip_minus.faces    = gripper.faces{2};
 
 
 % check with precise model
-[~, surf] = SurfaceIntersection(mesh_s, fingertip_plus, 'debug', false);
+[~, surf] = SurfaceIntersection(mesh, fingertip_plus, 'debug', false);
 if checkResult(surf)
 	return;
 end
-[~, surf] = SurfaceIntersection(mesh_s, fingertip_minus, 'debug', false);
+[~, surf] = SurfaceIntersection(mesh, fingertip_minus, 'debug', false);
 if checkResult(surf)
 	return;
 end
@@ -67,14 +67,14 @@ for i = 1:360
 	feasible_range(i) = true;
 
 	finger_plus.vertices = bsxfun(@plus, quatOnVec(gripper.vertices_safe{3}, gq(:, i)), gp(:,1))';
-	[~, surf]            = SurfaceIntersection(mesh_s, finger_plus, 'debug', false);
+	[~, surf]            = SurfaceIntersection(mesh, finger_plus, 'debug', false);
 	if checkResult(surf)
 		feasible_range(i) = false;
 		continue;
 	end	
 
 	finger_minus.vertices = bsxfun(@plus, quatOnVec(gripper.vertices_safe{4}, gq(:, i)), gp(:,2))';
-	[~, surf]             = SurfaceIntersection(mesh_s, finger_minus, 'debug', false);
+	[~, surf]             = SurfaceIntersection(mesh, finger_minus, 'debug', false);
 	if checkResult(surf)
 		feasible_range(i) = false;
 		continue;
@@ -83,7 +83,7 @@ for i = 1:360
 	palm_plus     = bsxfun(@plus, quatOnVec(gripper.vertices_safe{5}, gq(:, i)), gp(:,1));
 	palm_minus    = bsxfun(@plus, quatOnVec(gripper.vertices_safe{6}, gq(:, i)), gp(:,2));
 	palm.vertices = [palm_plus palm_minus]';
-	[~, surf]     = SurfaceIntersection(mesh_s, palm, 'debug', false);
+	[~, surf]     = SurfaceIntersection(mesh, palm, 'debug', false);
 	if checkResult(surf)
 		feasible_range(i) = false;
 		continue;

@@ -55,7 +55,7 @@ function interface_OpeningFcn(hObject, eventdata, handles, varargin)
 % Choose default command line output for interface
 handles.output = hObject;
 
-files = dir('../model/data/*.mat');
+files = dir('../model/real_objects/*.mat');
 set(handles.LB_files,'string',{files.name});
 
 % Update handles structure

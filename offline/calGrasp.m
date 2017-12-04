@@ -50,10 +50,9 @@ while true
             similar_grasps  = [similar_grasps grasp_points(:, similar_grasp_id, 1)]; 
         end
         
-        
 	end
 
-	% 3. check if this point belongs to a good grasp
+	% 3. find another point to form a good grasp
 	n1 = cross(p1(:,1) - p1(:,2), p1(:,3) - p1(:,2));
 	n1 = n1/norm(n1);
 	p2 = zeros(3);
@@ -71,16 +70,14 @@ while true
         end
 
 		% normal is good, sample the other grasp points, check angles
-        [pprj, in] = projectOntoTri(p2(:,2), p2(:,2), p2(:,3), grasp_points_face_i);
+        [pprj, in] = projectOntoTri(p2(:,1), p2(:,2), p2(:,3), grasp_points_face_i);
         if in
             grasp_points_face_j = pprj;
         else
             Ns_j                        = floor(mesh_s.area(j)*para.POINTJ_SAMPLE_DENSITY)+1; % # of sample points
             grasp_points_face_j_samples = sampleTriUniform(p2(:,1), p2(:,2),p2(:,3), Ns_j);
             
-            
-            
-            angle_is_good               = false;
+			angle_is_good = false;
             for s = 1:Ns_j
                 % check angles
                 d12 = grasp_points_face_j_samples(:, s) - grasp_points_face_i;
@@ -91,8 +88,8 @@ while true
                 if (abs(n1'*d12) < cos(ANGLE_TOL)) || (abs(n2'*d12) < cos(ANGLE_TOL))
                     continue;
                 end
-                angle_is_good = true;
-                grasp_points_face_j = grasp_points_face_j_samples(:, s);
+				angle_is_good       = true;
+				grasp_points_face_j = grasp_points_face_j_samples(:, s);
                 break;
             end
             
@@ -171,16 +168,9 @@ NGS                  = grasps_count - 1;
 grasp_points         = grasp_points(:, 1:NGS, :);
 grasp_feasible_range = grasp_feasible_range(:, 1:NGS);
 grasp_frame          = grasp_frame(:, 1:NGS);
-% calculate quaternions for each grasp
-grasp_quats = zeros(4, NGS);
-for i = 1:NGS
-	v                = grasp_points(:,i,1) - grasp_points(:,i,2);
-	grasp_quats(:,i) = quatBTVec(v,[1 0 0]');
-end
 
 grasps.count     = NGS;
 grasps.points    = grasp_points;
-grasps.quats     = grasp_quats;
 grasps.range     = grasp_feasible_range;
 grasps.ref_frame = grasp_frame; % describes where is the 0 in grasps.range
 
