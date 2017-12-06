@@ -89,6 +89,22 @@ while true
 		assert(~isempty(id_common)); % if failed, the graph search has problem
 		dispC(['  Edge #' num2str(p) ', common grasps: ' num2str(length(id_common))]);
 
+% 		% ploting
+% 		gp1o_w = grasps.points(:, id_common, 1);
+% 		gp2o_w = grasps.points(:, id_common, 2);
+% 		gp10 = quatOnVec(gp1o_w, path_q(:,p));
+% 		plotObject(mesh,2,path_q(:,p));
+% 		gp20 = quatOnVec(gp2o_w, path_q(:,p));
+% 		hold on; plot3(gp10(1,:), gp10(2,:), gp10(3,:), '.', 'markersize',35);
+% 		hold on; plot3(gp20(1,:), gp20(2,:), gp20(3,:), '.', 'markersize',35);
+% 		plotObject(mesh,3,path_q(:,p+1));
+% 		gp1f = quatOnVec(gp1o_w, path_q(:,p+1));
+% 		gp2f = quatOnVec(gp2o_w, path_q(:,p+1));
+% 		hold on; plot3(gp1f(1,:), gp1f(2,:), gp1f(3,:), '.', 'markersize',35);
+% 		hold on; plot3(gp2f(1,:), gp2f(2,:), gp2f(3,:), '.', 'markersize',35);
+% 		input('Press ENTER to continue...');
+
+
 		for i = 1:length(id_common)
 			path_graspid(p) = id_common(i);
 
@@ -101,9 +117,9 @@ while true
 		    if flag <= 0
                 switch flag
                     case -1
-                        dispC(['  --- Grasp ' num2str(i) ' Required rolling exceeds gripper tilt limit']);
+                        dispC(['  --- Grasp ' num2str(i) ' [Pre-checking] initial/final gripper collides with table']);
                     case -2
-                        dispC(['  --- Grasp ' num2str(i) ' [Pre-checking] initial/final grasp infeasible']);
+                        dispC(['  --- Grasp ' num2str(i) ' [Pre-checking] initial/final grasp infeasible in cf_range']);
                     case -3
                         dispC(['  --- Grasp ' num2str(i) ' [q obj optimization] violates gripper tilt angle limit ']);
                     case -4

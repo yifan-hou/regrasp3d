@@ -67,7 +67,7 @@ for i = 1:length(file_dir)
 	% Read object stl file
 % 	[fgraph, pgraph, mesh, mesh_s] = getObject(para, COM(:, i), filename);
 	% % or, load existed object files
-	load(full_path); 
+	load debug; 
 
 	% 
 	% compute grasps
@@ -81,7 +81,7 @@ for i = 1:length(file_dir)
 	[grasps, fgraph] = checkGrasp4StableMode(fgraph, pgraph, mesh, para);
 
 
-	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps', 'gripper');
+% 	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps', 'gripper');
 end
 
 % % modify error bound

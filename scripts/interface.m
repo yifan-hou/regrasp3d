@@ -63,10 +63,15 @@ guidata(hObject, handles);
 
 % UIWAIT makes interface wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
-addpath ../planning
 addpath ../model
-addpath ../model/data
+addpath ../model/real_objects
 addpath ../model/results
+addpath ../offline
+addpath ../optimization
+addpath ../optimization/autodiff_generated
+addpath ../planning
+addpath ../snopt
+
 clc
 
 % --- Outputs from this function are returned to the command line.
@@ -96,9 +101,10 @@ load(filename);
 % -----------------------------------------------
 
 % planning parameter
-para.GRIPPER_TILT_LIMIT = 80*pi/180; % tilting angle tolerance
+para.GRIPPER_TILT_LIMIT = 30*pi/180; % tilting angle tolerance
 para.GRIPPER_Z_LIMIT    = 10; % finger position limit
-
+para.FINGER_OPEN_SPACE = 45; % 45mm each side. used for checking collision with table
+para.FINGER_RADIUS = 0; % used for checking collision with table
 
 									  
 % optimization parameter
@@ -128,14 +134,16 @@ end
 
 
 % Plot the object to GUI
-plotObject(mesh, handles.AX_initial);
-plotObject(mesh, handles.AX_final);
-plotObject(mesh, 2); % temporary 
+q0 = [1 0 0 0]';
+q0 = quatMTimes(aa2quat(pi/2, [-1; 0; 0]), q0);
+qf = [1 0 0 0]';
+
+plotObject(mesh, handles.AX_initial, q0);
+plotObject(mesh, handles.AX_final, qf);
+
 axis off
 rotate3d on;
 
-q0 = [1 0 0 0]';
-qf = [1 0 0 0]';
 
 disp('[Load Model] Model is loaded.');
 

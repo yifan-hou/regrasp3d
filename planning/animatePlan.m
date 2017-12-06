@@ -45,7 +45,7 @@ table.vertices(:,5) = [1   1 0]';
 table.vertices(:,6) = [-1  1 0]';
 table.vertices(:,7) = [-1  1 -0.1]';
 table.vertices(:,8) = [1   1 -0.1]';
-table.vertices = table.vertices';
+table.vertices = 100*table.vertices';
 table.faces = [1 4 3;
 	   1 2 3;
 	   6 1 2;
@@ -66,7 +66,7 @@ patch('Faces', table.faces, ...
 			      'AmbientStrength', 0.15);
 
 xlabel('X'); ylabel('Y'); zlabel('Z');
-axis([-1 1 -1 1 0 2]);
+axis(100*[-1 1 -1 1 0 2]);
 view(-43, 27);
 axis off
 

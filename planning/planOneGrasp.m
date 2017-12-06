@@ -18,18 +18,35 @@ points = pgraph.vertices; % decimated convex hull
 com    = mesh.COM;
 ps_err = pgraph.err_bound;
 
-
-% 	Find out the slice of collision-free range
-refz_o = quatOnVec([0 0 1]', grasps.ref_frame(:, grasp_id));
-refx_o = quatOnVec([1 0 0]', grasps.ref_frame(:, grasp_id));
+% Collision between gripper and table
 gp10   = quatOnVec(gp1o_w, q0);
 gp20   = quatOnVec(gp2o_w, q0);
 qfr0   = getProperGraspSimple(gp10, gp20);
-% qfr0z   = quatOnVec([0 0 1]', qfr0); % initial gripper orientation in world frame
-% qfr0z_o = quatOnVec(qfr0z, quatInv(q0));
-% z0_ang  = angBTVec(refz_o, qfr0z_o, refx_o, 1);
-% z0_id   = round(180/pi*z0_ang);
+gp1f   = quatOnVec(gp1o_w, qf);
+gp2f   = quatOnVec(gp2o_w, qf);
+qfrf   = getProperGraspSimple(gp1f, gp2f);
+gp0_x = quatOnVec([1 0 0]', qfr0);
+gp0_z = quatOnVec([0 0 1]', qfr0);
+gpf_x = quatOnVec([1 0 0]', qfrf);
+gpf_z = quatOnVec([0 0 1]', qfrf);
+gp10_bottom = gp10 + gp0_x*para.FINGER_OPEN_SPACE - gp0_z*para.FINGER_RADIUS;
+gp20_bottom = gp20 - gp0_x*para.FINGER_OPEN_SPACE - gp0_z*para.FINGER_RADIUS;
+gp1f_bottom = gp1f + gpf_x*para.FINGER_OPEN_SPACE - gpf_z*para.FINGER_RADIUS;
+gp2f_bottom = gp2f - gpf_x*para.FINGER_OPEN_SPACE - gpf_z*para.FINGER_RADIUS;
+points0 = quatOnVec(points, q0);
+pointsf = quatOnVec(points, qf);
+tablez0 = min(points0(3,:));
+tablezf = min(pointsf(3,:));
 
+if any([gp10_bottom(3)-tablez0 gp20_bottom(3)-tablez0 gp1f_bottom(3)-tablezf gp2f_bottom(3)-tablezf]< para.GRIPPER_Z_LIMIT)
+	flag = -1;
+	return;
+end
+
+%  Collision between gripper and object
+refz_o = quatOnVec([0 0 1]', grasps.ref_frame(:, grasp_id));
+refx_o = quatOnVec([1 0 0]', grasps.ref_frame(:, grasp_id));
+% Find out the slice of collision-free range
 % get seed
 % seed must be within [-pi, pi] around current z
 [~, z0_id]  = getIDinCfRange(qfr0, q0, refz_o, refx_o);
@@ -63,7 +80,7 @@ end
 
 if ~isempty(qgf)
 	[~, zgf_id] = getIDinCfRange(qgf, qf, refz_o, refx_o);
-	cf_feasible = cf_feasible&collision_free_range(zgf_id, :)';
+	cf_feasible = (cf_feasible&collision_free_range(zgf_id, :))';
 end
 
 if ~any(cf_feasible)
@@ -74,8 +91,8 @@ end
 % -----------------------------------------
 % 	Optimization: find qobj trajectory
 % -----------------------------------------
-N            = para.opt_obj_N;
-qobj 		 = quatSlerp(q0, qf, (1:N)/N);
+N    = para.opt_obj_N;
+qobj = quatSlerp(q0, qf, (1:N)/N);
 
 % % init x
 % x            = (2*rand(3*N,1) - 1)*pi;

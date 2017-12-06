@@ -27,6 +27,7 @@ grasps.points    = zeros(3, para.NGS, 2);
 grasps.range     = zeros(360, para.NGS);
 grasps.ref_frame = zeros(4, para.NGS); 
 
+delete clickData.mat
 save clickData.mat sample_points id_points grasps
 
 % show the point cloud
