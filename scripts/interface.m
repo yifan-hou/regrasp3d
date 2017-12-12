@@ -22,7 +22,7 @@ function varargout = interface(varargin)
 
 % Edit the above text to modify the response to help interface
 
-% Last Modified by GUIDE v2.5 14-Sep-2017 00:20:06
+% Last Modified by GUIDE v2.5 06-Dec-2017 16:47:31
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -102,9 +102,9 @@ load(filename);
 
 % planning parameter
 para.GRIPPER_TILT_LIMIT = 30*pi/180; % tilting angle tolerance
-para.GRIPPER_Z_LIMIT    = 10; % finger position limit
-para.FINGER_OPEN_SPACE = 45; % 45mm each side. used for checking collision with table
-para.FINGER_RADIUS = 0; % used for checking collision with table
+para.GRIPPER_Z_LIMIT    = 17; % finger position limit
+para.FINGER_OPEN_SPACE  = 45; % 45mm each side. used for checking collision with table
+para.FINGER_RADIUS      = 0; % used for checking collision with table
 
 									  
 % optimization parameter
@@ -183,8 +183,10 @@ method = 'pivoting';
 
 if path_found
 	set(handles.BTN_animate, 'Enable', 'on');
+    set(handles.BTN_gentraj, 'Enable', 'on');
 else
 	set(handles.BTN_animate, 'Enable', 'off');
+    set(handles.BTN_gentraj, 'Enable', 'off');
 end
 
 
@@ -643,3 +645,15 @@ function BTN_show_results2_Callback(hObject, eventdata, handles)
 % hObject    handle to BTN_show_results2 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes on button press in BTN_gentraj.
+function BTN_gentraj_Callback(hObject, eventdata, handles)
+% hObject    handle to BTN_gentraj (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global path_found plan
+
+if path_found
+	generateRobotTraj(plan);
+end

@@ -156,6 +156,8 @@ while true
 
 	if path_found
 		dispC(['[Planning] Solution found. Length = ' num2str(NP) ]);
+		% print to file
+		
 		break;
 	end
 
