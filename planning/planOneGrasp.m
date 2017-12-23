@@ -17,6 +17,7 @@ gp2o_w = grasps.points(:, grasp_id, 2);
 points = pgraph.vertices; % decimated convex hull
 com    = mesh.COM;
 ps_err = pgraph.err_bound;
+CONE = atan(para.MU);
 
 % Collision between gripper and table
 gp10   = quatOnVec(gp1o_w, q0);
@@ -156,14 +157,18 @@ qobj = quatSquad(0:N-1, qobj, (0:Ng-1)/(Ng-1)*(N-1));
 % 	gripper feasible range (tilting range)
 % 	collision free range
 rtype         = zeros(1, Ng); % 1: pivotable, 0: roll
-stype         = zeros(1, Ng); % 1: sliding, 0: sticking
 obj_rotation  = zeros(1, Ng); % rotation of object measured in grasp frame
 tilt_range    = zeros(2, Ng); % min (right), max (left)
 cf_range      = zeros(2, Ng, Ncf); % min (right), max (left)
 grasp_qframes = zeros(4, Ng); % grasp frame at each time step
-trans         = zeros(3, Ng); % translational offset
-gp1           = zeros(3, Ng); % grasp position (includes offset)
-gp2           = zeros(3, Ng);
+stuck      = false(1, Ng);
+gpz        = zeros(1, Ng); % z pos of gripper
+gpxy_delta = zeros(2, Ng); % xy offset of gripper
+% gp1           = zeros(3, Ng); % grasp position (includes offset)
+% gp2           = zeros(3, Ng);
+
+points_fr_old = points;
+gp_fr_old     = zeros(3, 1);
 
 for fr = 1:Ng
 	qp   = qobj(:, fr);
@@ -189,10 +194,10 @@ for fr = 1:Ng
 	gp1_fr    = m_fr*gp1o_w;
 	gp2_fr    = m_fr*gp2o_w;
 
-	zoffset        = min(points_fr(3,:));
-	points_fr(3,:) = points_fr(3,:) - zoffset;
-	gp1_fr(3)      = gp1_fr(3) - zoffset;
-	gp2_fr(3)      = gp2_fr(3) - zoffset;
+	[zoffset, min_id] = min(points_fr(3,:));
+	points_fr(3,:)    = points_fr(3,:) - zoffset;
+	gp1_fr(3)         = gp1_fr(3) - zoffset;
+	gp2_fr(3)         = gp2_fr(3) - zoffset;
 	% 
     % check z limit
     % 
@@ -200,9 +205,9 @@ for fr = 1:Ng
 		flag = -4;
 		return;
 	end
-	trans(3, fr) =  - zoffset;
-	gp1(:, fr)   = gp1_fr;
-	gp2(:, fr)   = gp2_fr;
+	% gp1(:, fr) = gp1_fr;
+	% gp2(:, fr) = gp2_fr;
+
 	% 
 	% check collision free range
 	% 
@@ -226,8 +231,8 @@ for fr = 1:Ng
 			continue;
 		end
 		if length(start1) == 2
-			center1 = (start1(1) + end1(1))/2;
-			center2 = (start1(2) + end1(2))/2;
+			center1    = (start1(1) + end1(1))/2;
+			center2    = (start1(2) + end1(2))/2;
 			center1_id = z_id_range(round(center1));
 			center2_id = z_id_range(round(center2));
 			dist2seed1 = abs(ang_180(center1_id - seeds(cf)));
@@ -240,7 +245,7 @@ for fr = 1:Ng
 				end1   = end1(2);
 			end
 		end
-		temp_id_range   = -90:90;
+		temp_id_range       = -90:90;
 		cf_range(1, fr, cf) = temp_id_range(start1)*pi/180;
 		cf_range(2, fr, cf) = temp_id_range(end1)*pi/180;
 	end
@@ -258,8 +263,8 @@ for fr = 1:Ng
 	gp1_GF  = quatOnVec(gp1_fr, qfr_inv);
 	gp2_GF  = quatOnVec(gp2_fr, qfr_inv);
 	assert(abs(gp1_GF(2)-gp2_GF(2))<1e-5);
-	com_GF  = quatOnVec(com_fr, qfr_inv);
-	com_y = com_GF(2) - gp1_GF(2);
+	com_GF = quatOnVec(com_fr, qfr_inv);
+	com_y  = com_GF(2) - gp1_GF(2);
 
 	cpid  = points_fr(3, :) < 2*ps_err + 1e-4;
 	cp_fr = points_fr(:, cpid); % potential contact points
@@ -271,9 +276,33 @@ for fr = 1:Ng
 	end
 
 	% 
-	% Check slidability
+	% Check if getting stuck 
+	% 	(going down and within friction cone)
 	% 
+	gp_fr        = (gp1_fr + gp2_fr)/2;
+	gpz(fr)      = gp_fr(3);
 	
+	if fr > 1
+	    if gpz(fr) < gpz(fr-1)
+	        % going down
+			[~, cpid] = min(points_fr(3, :)); % < 2*ps_err + 1e-4;
+			cp        = points_fr(:, cpid);
+			gp_cp     = gp_fr - cp;
+
+			cones     = atan2(norm(gp_cp(1:2)), abs(gp_cp(3)));
+	        if cones < CONE
+				stuck(fr)           = true;
+				cp_old              = points_fr_old(:, cpid);
+				gp_cp_old           = gp_fr_old - cp_old;
+				gpxy_delta(:, fr-1) = gp_cp - gp_cp_old;
+	        end
+		end
+	else
+		gp0 = gp_fr;
+	end
+
+	points_fr_old = points_fr;	
+	gp_fr_old     = gp_fr;
 end
 
 
@@ -386,14 +415,17 @@ for i = 1:Ng
 	qgrp(:, i) = quatMTimes(q_incre, grasp_qframes(:, i));
 end
 
-plan.N     = Ng;
-plan.qobj  = qobj;
-plan.qgrp  = qgrp;
-plan.trans = trans;
-plan.gp1   = gp1;
-plan.gp2   = gp2;
-plan.rtype = rtype;
-plan.stype = stype;
+plan.N          = Ng;
+plan.rtype      = rtype;
+plan.stuck      = stuck;
+plan.qobj       = qobj;
+plan.qgrp       = qgrp;
+plan.grasp_id   = grasp_id; % just for animation
+% plan.gp1        = gp1; % just for animation
+% plan.gp2        = gp2; % just for animation
+plan.gp0        = gp0;
+plan.gpz        = gpz;
+plan.gpxy_delta = gpxy_delta;
 
 flag = 1;
 

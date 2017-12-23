@@ -1,16 +1,24 @@
 % gp: grasp points in world frame
 % q: 4x1
 function animatePlan(fidOrhandle, plan)
-global mesh gripper 
+global mesh gripper grasps
+
+
 
 % --------------------------------------
 % 	draw and get the handles
 % --------------------------------------
+gp1o_w = grasps.points(:, plan{1}.grasp_id, 1);
+gp2o_w = grasps.points(:, plan{1}.grasp_id, 2);
 % object states
-q0        = plan{1}.qobj(:,1);
-m0_o      = quat2m(q0);
-com_w     = m0_o*mesh.COM;
-points_w  = m0_o*(mesh.vertices');
+q0       = plan{1}.qobj(:,1);
+m0_o     = quat2m(q0);
+points_w = m0_o*(mesh.vertices');
+% offset   = min(points_w(3,:));
+com_w    = m0_o*mesh.COM;
+gp1      = m0_o*gp1o_w;
+gp2      = m0_o*gp2o_w;
+
 
 if isnumeric(fidOrhandle)
 	figure(fidOrhandle);
@@ -30,7 +38,7 @@ cp_w      = points_w(:,cpid);
 hold on;
 % object
 handles_object.surf    = plotObject(mesh, fidOrhandle, q0); % call plotObject without handle argument will clean the figure
-handles_gripper        = plotGripper(fidOrhandle, gripper, q0, [plan{1}.gp1(:,1) plan{1}.gp2(:,1)], plan{1}.qgrp(:,1));
+handles_gripper        = plotGripper(fidOrhandle, gripper, q0, [gp1 gp2], plan{1}.qgrp(:,1));
 handles_object.cp      = plot3(cp_w(1,:), cp_w(2,:), cp_w(3,:), '.k', 'markersize', 30);
 handles_object.com     = plot3(com_w(1), com_w(2), com_w(3), 'r*', 'markersize', 8);
 handles_object.gravity = plot3(com_w(1)+[0 0], com_w(2)+[0 0], com_w(3)+[0 -0.4], 'r-', 'linewidth', 2);
@@ -75,11 +83,16 @@ axis off
 % --------------------------------------
 N = length(plan);
 for p = 1:N
+	gp1o_w = grasps.points(:, plan{p}.grasp_id, 1);
+	gp2o_w = grasps.points(:, plan{p}.grasp_id, 2);
+	offset = [0 0 0]';
+	trans  = [0 0]';
+
 	for fr = 1:plan{p}.N
 		qobj  = plan{p}.qobj(:, fr);
 		qgrp  = plan{p}.qgrp(:, fr);
-		gp1   = plan{p}.gp1(:, fr);
-		gp2   = plan{p}.gp2(:, fr);
+		% gp1   = plan{p}.gp1(:, fr);
+		% gp2   = plan{p}.gp2(:, fr);
 		trans = plan{p}.trans(:, fr);
 		rtype = plan{p}.rtype(fr);
 
@@ -91,7 +104,27 @@ for p = 1:N
 			handles_gripper.fingertip_minus.FaceColor = [0.1 0.0 0.9];
 		end
 
-		updatePlot(qobj, qgrp, gp1, gp2, trans, gripper, mesh.COM, mesh.vertices', handles_object, handles_gripper);
+		trans = trans + plan{p}.gpxy_delta;
+
+		% rotate & translate
+		Robj = quat2m(qobj);
+		ps   = Robj*(mesh.vertices');
+		gp1_ = Robj*gp1o_w;
+		gp2_ = Robj*gp2o_w;
+		gp_  = (gp1_ + gp2_)/2;
+
+		offset      = [gp_(1) gp_(2) min(ps(3,:))]';
+		offset(1:2) = offset(1:2) - trans;
+		ps_         = ps - offset;
+		com_        = Robj*mesh.COM - offset;
+		gp1_        = gp1 - offset;
+		gp2_        = gp2 - offset;
+
+		cpid = ps_(3,:) < 1e-5;
+		cp_  = ps_(:,cpid);
+
+
+		updatePlot(qobj, qgrp, gp1_, gp2_, cp_, com_, handles_object, handles_gripper);
         pause(0.1);
 	end
 end
@@ -101,16 +134,9 @@ end
 
 
 
-function updatePlot(qobj, qgp0, gp1, gp2, trans, gripper, com, points, handles_object, handles_gripper) 
-	% rotate & translate
-	Robj = quat2m(qobj);
-	com_ = Robj*com + trans;
-	ps_  = Robj*points + trans;
-
-	[~, cpid] = min(ps_(3,:));
-	cpid      = abs(ps_(3,:) - ps_(3,cpid))<1e-5;
-	cp_       = ps_(:,cpid);
-
+function updatePlot(qobj, qgp0, gp1, gp2, cp_, com_, handles_object, handles_gripper) 
+	global mesh gripper
+	
 	% update plot
 
 	handles_object.cp.XData        = cp_(1,:);
