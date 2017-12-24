@@ -60,8 +60,8 @@ for p = 1:N
         end
         
 		middle_qgp        = quatSlerp(plan{p}.qgrp(:, fr), plan{p}.qgrp(:, fr+1), (0:n_seg_new-1)/(n_seg_new-1));
-		middle_gpz        = interp1([0 1], plan{p}.gpz(:, fr:fr+1)', (0:n_seg_new-1)/(n_seg_new-1))';
-		middle_gpxy_delta = ones(1, n_seg_new)/n_seg_new*plan{p}.gpxy_delta(:, fr);
+		middle_gpz        = interp1([0 1], plan{p}.gpz(:, fr:fr+1), (0:n_seg_new-1)/(n_seg_new-1));
+		middle_gpxy_delta = plan{p}.gpxy_delta(:, fr)*ones(1, n_seg_new)/n_seg_new;
 		temp_qgp          = [temp_qgp middle_qgp];
 		temp_gpz          = [temp_gpz middle_gpz];
 		temp_gpxy_delta   = [temp_gpxy_delta middle_gpxy_delta];
@@ -138,7 +138,7 @@ for p = 1:N
 		end
 	end
 	fprintf(f_N, '%d\n', plan_smooth{p}.N);
-	fprintf(f_grp0, '%f\t%f\t%f\n', plan{p}.grp0(1), plan{p}.grp0(2), plan{p}.grp0(3));
+	fprintf(f_grp0, '%f\t%f\t%f\n', plan{p}.gp0(1), plan{p}.gp0(2), plan{p}.gp0(3));
 end
 fclose(f_rtype);
 fclose(f_stuck);

@@ -102,7 +102,7 @@ load(filename);
 
 % planning parameter
 para.GRIPPER_TILT_LIMIT = 30*pi/180; % tilting angle tolerance
-para.GRIPPER_Z_LIMIT    = 17; % finger position limit
+para.GRIPPER_Z_LIMIT    = 15; % finger position limit
 para.FINGER_OPEN_SPACE  = 45; % 45mm each side. used for checking collision with table
 para.FINGER_RADIUS      = 0; % used for checking collision with table
 para.MU                 = 0.5; % friction between object and the table

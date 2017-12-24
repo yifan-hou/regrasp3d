@@ -32,12 +32,12 @@ for m = 1:fgraph.NM
 end
 adj_matrix(fgraph.NM+1, fgraph.NM+1) = 1;
 adj_matrix(fgraph.NM+2, fgraph.NM+2) = 1;
-dispC('Adjacent Matrix:');
-dispC(adj_matrix);
 if any(grasp_id_f&grasp_id_0)
 	adj_matrix(fgraph.NM+1, fgraph.NM+2) = 1;
 	adj_matrix(fgraph.NM+2, fgraph.NM+1) = 1;
 end
+dispC('Adjacent Matrix:');
+dispC(adj_matrix);
 if ~any(grasp_id_0)
 	path_found = false;
 	dispC('[Planning] No Solution. No feasible initial grasps.');

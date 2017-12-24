@@ -12,10 +12,11 @@ tilt_z_limit       = sin(GRIPPER_TILT_LIMIT);
 grasp_id 		   = ones(1, grasps.count);
 
 % find the bottom point, vertical offset
-points_rot = zeros(3, pgraph.NPC);
-for j = 1:pgraph.NPC
-	points_rot(:,j) = quatOnVec(pgraph.vertices(:, j), q);
-end
+points_rot = quatOnVec(pgraph.vertices, q);
+% points_rot = zeros(3, pgraph.NPC);
+% for j = 1:pgraph.NPC
+% 	points_rot(:,j) = quatOnVec(pgraph.vertices(:, j), q);
+% end
 z_offset = min(points_rot(3,:)) + pgraph.err_bound;
 
 % visualization
@@ -29,13 +30,6 @@ for j = 1:grasps.count
 	p1 = quatOnVec(grasps.points(:,j,1), q);
 	p2 = quatOnVec(grasps.points(:,j,2), q);
 
-	% visualization
-	if para.showGraspChecking
-		% grasp point
-		plot3([p1(1) p2(1)], [p1(2) p2(2)], [p1(3) p2(3)], '-b*','markersize',8, 'linewidth', 2);
-	end
-
-
 
 	% check z position limit
 	if (p1(3) - z_offset < GRIPPER_Z_LIMIT) || (p2(3) - z_offset < GRIPPER_Z_LIMIT) 
@@ -44,6 +38,8 @@ for j = 1:grasps.count
 		% visualization
 		if para.showGraspChecking
 			% grasp point
+            plot3([p1(1) p2(1)], [p1(2) p2(2)], [p1(3) p2(3)], '-b*','markersize',8, 'linewidth', 2);
+	
 			if p1(3) - z_offset < GRIPPER_Z_LIMIT
 				plot3(p1(1), p1(2), p1(3), 'ro','markersize',8);
 			end
@@ -63,10 +59,15 @@ for j = 1:grasps.count
 		% visualization
 		if para.showGraspChecking
 			% grasp point
-			plot3([p1(1) p2(1)], [p1(2) p2(2)], [p1(3) p2(3)], 'r-','linewidth',2);
+			plot3([p1(1) p2(1)], [p1(2) p2(2)], [p1(3) p2(3)], '-y*','markersize', 5, 'linewidth',2);
 		end
 
 		continue;
-	end
+    end
+    
+    if para.showGraspChecking
+        % grasp point
+        plot3([p1(1) p2(1)], [p1(2) p2(2)], [p1(3) p2(3)], '-g*','markersize',8, 'linewidth', 2);
+    end
 
 end

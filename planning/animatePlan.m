@@ -85,7 +85,7 @@ N = length(plan);
 for p = 1:N
 	gp1o_w = grasps.points(:, plan{p}.grasp_id, 1);
 	gp2o_w = grasps.points(:, plan{p}.grasp_id, 2);
-	offset = [0 0 0]';
+% 	offset = [0 0 0]';
 	trans  = [0 0]';
 
 	for fr = 1:plan{p}.N
@@ -93,7 +93,7 @@ for p = 1:N
 		qgrp  = plan{p}.qgrp(:, fr);
 		% gp1   = plan{p}.gp1(:, fr);
 		% gp2   = plan{p}.gp2(:, fr);
-		trans = plan{p}.trans(:, fr);
+% 		trans = plan{p}.trans(:, fr);
 		rtype = plan{p}.rtype(fr);
 
 		if rtype
@@ -104,16 +104,16 @@ for p = 1:N
 			handles_gripper.fingertip_minus.FaceColor = [0.1 0.0 0.9];
 		end
 
-		trans = trans + plan{p}.gpxy_delta;
+		trans = trans + plan{p}.gpxy_delta(:,fr);
 
 		% rotate & translate
 		Robj = quat2m(qobj);
 		ps   = Robj*(mesh.vertices');
-		gp1_ = Robj*gp1o_w;
-		gp2_ = Robj*gp2o_w;
-		gp_  = (gp1_ + gp2_)/2;
+		gp1  = Robj*gp1o_w;
+		gp2  = Robj*gp2o_w;
+		gp   = (gp1 + gp2)/2;
 
-		offset      = [gp_(1) gp_(2) min(ps(3,:))]';
+		offset      = [gp(1) gp(2) min(ps(3,:))]';
 		offset(1:2) = offset(1:2) - trans;
 		ps_         = ps - offset;
 		com_        = Robj*mesh.COM - offset;
@@ -124,7 +124,7 @@ for p = 1:N
 		cp_  = ps_(:,cpid);
 
 
-		updatePlot(qobj, qgrp, gp1_, gp2_, cp_, com_, handles_object, handles_gripper);
+		updatePlot(qobj, qgrp, gp1_, gp2_, cp_, com_, ps_, handles_object, handles_gripper);
         pause(0.1);
 	end
 end
@@ -134,7 +134,7 @@ end
 
 
 
-function updatePlot(qobj, qgp0, gp1, gp2, cp_, com_, handles_object, handles_gripper) 
+function updatePlot(qobj, qgp0, gp1, gp2, cp_, com_, ps_, handles_object, handles_gripper) 
 	global mesh gripper
 	
 	% update plot

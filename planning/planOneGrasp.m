@@ -294,7 +294,7 @@ for fr = 1:Ng
 				stuck(fr)           = true;
 				cp_old              = points_fr_old(:, cpid);
 				gp_cp_old           = gp_fr_old - cp_old;
-				gpxy_delta(:, fr-1) = gp_cp - gp_cp_old;
+				gpxy_delta(:, fr-1) = gp_cp(1:2) - gp_cp_old(1:2);
 	        end
 		end
 	else
