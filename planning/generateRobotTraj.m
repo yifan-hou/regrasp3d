@@ -7,7 +7,7 @@ clc;
 % --------------------------------------
 % 	Robot coordinate frames
 % --------------------------------------
-trans_p2r  = [17.37 -474.66 5]';
+trans_p2r  = [17.37 -474.66 5]' + [0 100 0]';
 compensate = 36;
 Velocity_p = 100; % mm/s
 Velocity_q = 15*pi/180; % mm/s
@@ -105,7 +105,7 @@ for p = 1:N
 		% read
 		rtype      = plan_smooth{p}.rtype(fr);
 		stuck      = plan_smooth{p}.stuck(fr);
-		qg_p       = plan_smooth{p}.qgrp(:, fr);
+		qg_p       = plan_smooth{p}.qgrp(:, fr); % grasp frame, measured in planning
 		gpz        = plan_smooth{p}.gpz(:, fr);
 		gpxy_delta = plan_smooth{p}.gpxy_delta(:, fr);
 
@@ -114,10 +114,10 @@ for p = 1:N
 		xg    = quatOnVec([1 0 0]', qg_p);
 		qcp1  = aa2quat(compensate*pi/180, zg);
 		xw    = quatOnVec(xg, qcp1);
-		q_g2t = quatMTimes(aa2quat(pi, xw), qcp1);
+		q_g2t = quatMTimes(aa2quat(pi, xw), qcp1); % transition from grasp frame to robot tool frame 
 
-		qt_p     = quatMTimes(q_g2t, qg_p);
-		qt_r     = qt_p;
+		qt_p     = quatMTimes(q_g2t, qg_p); % tool frame measured in planning
+		qt_r     = qt_p; % tool frame measured in robot frame (done)
 		% transg_r = transg_p + trans_p2r;
 		% transt_r = transg_r;
 		toolz        = gpz + trans_p2r(3);
@@ -137,16 +137,17 @@ for p = 1:N
 			fprintf(f_grpxy_delta, '\n');
 		end
 	end
+	gp0 = plan{p}.gp0 + trans_p2r;
 	fprintf(f_N, '%d\n', plan_smooth{p}.N);
-	fprintf(f_grp0, '%f\t%f\t%f\n', plan{p}.gp0(1), plan{p}.gp0(2), plan{p}.gp0(3));
+	fprintf(f_grp0, '%f\t%f\t%f\n', gp0(1), gp0(2), gp0(3));
 end
+fclose(f_N);
 fclose(f_rtype);
 fclose(f_stuck);
 fclose(f_qgrp);
 fclose(f_grp0);
 fclose(f_grpz);
 fclose(f_grpxy_delta);
-fclose(f_N);
 
 disp('Trajectory is written to file.');
 end
