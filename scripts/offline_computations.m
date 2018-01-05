@@ -27,7 +27,7 @@ para.POINTJ_SAMPLE_DENSITY = 0.03; % # of points per mm^2
 para.grasp_travel          = 90-10;
 
 % convex hull simplification parameters
-para.NF_CVR      = 80; % target number of faces on the simplified convex hull
+para.NF_CVR      = 500; % 80 target number of faces on the simplified convex hull
 para.err_tol_CVR = 5;
 
 % collision checking
@@ -53,7 +53,7 @@ COM = [
 	   -10 10 0 % pipe fitting
 	   ]';
 
-for i = 1:length(file_dir)
+for i = 3:length(file_dir)
 	% 
 	% get file name
 	% 
@@ -65,9 +65,9 @@ for i = 1:length(file_dir)
     % load the stl file
     % 
 	% Read object stl file
-% 	[fgraph, pgraph, mesh, mesh_s] = getObject(para, COM(:, i), filename);
+	[fgraph, pgraph, mesh, mesh_s] = getObject(para, COM(:, i), filename);
 	% % or, load existed object files
-	load debug; 
+% 	load debug; 
 
 	% 
 	% compute grasps
@@ -81,7 +81,7 @@ for i = 1:length(file_dir)
 	[grasps, fgraph] = checkGrasp4StableMode(fgraph, pgraph, mesh, para);
 
 
-% 	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps', 'gripper');
+	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps', 'gripper');
 end
 
 % % modify error bound

@@ -21,7 +21,6 @@ for f = 1:length(id_sampled)
 	count = count + N;
 end
 
-
 grasps.count     = 0;
 grasps.points    = zeros(3, para.NGS, 2);
 grasps.range     = zeros(360, para.NGS);

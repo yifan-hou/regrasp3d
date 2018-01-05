@@ -32,17 +32,17 @@ disp(['[GetObject] Points on Model: ' num2str(NP) ]);
 % 		Decimated Mesh
 % --------------------------------------------
 if size(fv.faces, 1) > 1000
-	mesh_s           = reducepatch(fv.faces, fv.vertices, 500);
+	mesh_s           = reducepatch(fv.faces, fv.vertices, 1000);
 	mesh_s.err_bound = hausdorffDist(mesh_s.vertices', fv.vertices');
 else
 	mesh_s           = fv;
 	mesh_s.err_bound = 0;
 end
 disp(['[GetObject] Mesh Approximation Error: ' num2str(mesh_s.err_bound) ]);
-points_s = fv.vertices';
-faces_s  = fv.faces';
+points_s = mesh_s.vertices';
+faces_s  = mesh_s.faces';
 
-mesh_s.COM      = COM;
+mesh_s.COM    = COM;
 mesh.COM      = COM;
 
 % calculate the area of each triangle
@@ -64,18 +64,20 @@ fvc.faces                 = convhull(fv.vertices, 'simplify',true);
 [fvr, err_bound]          = simplifyConvHull(fvc, para);
 disp(['[GetObject] Convex Hull Approximation Error: ' num2str(err_bound) ]);
 
-NPC = size(fvr.vertices, 1);
-NFC = size(fvr.faces, 1);
-assert(NPC == max(max(fvr.faces)));
+NPC = size(fvc.vertices, 1);
+NFC = size(fvc.faces, 1);
+NPR = size(fvr.vertices, 1);
+NFR = size(fvr.faces, 1);
+assert(NPR == max(max(fvr.faces)));
 
 % get adjacent matrix
-pch_adj_matrix = sparse( fvr.faces(:,1), fvr.faces(:,2), 1, NPC, NPC ) + ...
-			     sparse( fvr.faces(:,2), fvr.faces(:,3), 1, NPC, NPC ) + ...
-			     sparse( fvr.faces(:,3), fvr.faces(:,1), 1, NPC, NPC );
+pch_adj_matrix = sparse( fvr.faces(:,1), fvr.faces(:,2), 1, NPR, NPR ) + ...
+			     sparse( fvr.faces(:,2), fvr.faces(:,3), 1, NPR, NPR ) + ...
+			     sparse( fvr.faces(:,3), fvr.faces(:,1), 1, NPR, NPR );
 pch_adj_matrix = (pch_adj_matrix + pch_adj_matrix.')>0;
 
-disp(['[GetObject] Reduce from: ' num2str(size(fvc.faces, 1)) 'f, ' num2str(size(fvc.vertices, 1)) 'v' ]);
-disp(['[GetObject] To:          ' num2str(NFC) 'f, ' num2str(size(fvr.vertices, 1)) 'v' ]);
+disp(['[GetObject] Reduce from: ' num2str(NFC) 'f, ' num2str(NPC) 'v' ]);
+disp(['[GetObject] To:          ' num2str(NFR) 'f, ' num2str(NPR) 'v' ]);
 
 % --------------------------------------------
 % 		stable modes
@@ -84,9 +86,9 @@ disp(['[GetObject] To:          ' num2str(NFC) 'f, ' num2str(size(fvr.vertices, 
 m_is_stable    = false(1, NFC);
 m_quat         = zeros(4, NFC); % quaternion to transform Normal to [0 0 1]
 for m = 1:NFC
-	a = fvr.vertices(fvr.faces(m, 1), :)';
-	b = fvr.vertices(fvr.faces(m, 2), :)';
-	c = fvr.vertices(fvr.faces(m, 3), :)';
+	a = fvc.vertices(fvc.faces(m, 1), :)';
+	b = fvc.vertices(fvc.faces(m, 2), :)';
+	c = fvc.vertices(fvc.faces(m, 3), :)';
 
 	[~, in] = projectOntoTri(a, b, c, COM);
 
@@ -170,8 +172,8 @@ fgraph.NM   = NFS;
 fgraph.quat = m_quat;
 
 % Decimated convex hull
-pgraph.NPC        = NPC;
-pgraph.NFC        = NFC;
+pgraph.NPR        = NPR;
+pgraph.NFR        = NFR;
 pgraph.err_bound  = err_bound;
 pgraph.faces      = fvr.faces';
 pgraph.vertices   = fvr.vertices';
