@@ -264,14 +264,14 @@ for fr = 1:Ng
 	gp2_GF  = quatOnVec(gp2_fr, qfr_inv);
 	assert(abs(gp1_GF(2)-gp2_GF(2))<1e-5);
 	com_GF = quatOnVec(com_fr, qfr_inv);
-	com_y  = com_GF(2) - gp1_GF(2);
 
 	cpid  = points_fr(3, :) < 2*ps_err + 1e-4;
 	cp_fr = points_fr(:, cpid); % potential contact points
 	cp_GF = quatOnVec(cp_fr, qfr_inv);
-	cp_l  = min(cp_GF(2, :)) - gp1_GF(2);
-	cp_r  = max(cp_GF(2, :)) - gp1_GF(2);
-	if ((com_y+para.COM_ERR)*(com_y-para.COM_ERR) > 0) && (cp_l*com_y > 0) && (cp_r*com_y > 0)
+
+	test_points = [min(cp_GF(2, :)), max(cp_GF(2, :)), com_GF(2)+para.COM_ERR, com_GF(2)-para.COM_ERR];
+	test_points_all = [test_points - gp1_GF(2) - para.GP_ERR, test_points - gp1_GF(2) + para.GP_ERR];
+	if (~any(test_points_all > 0)) || (~any(test_points_all < 0))
 		rtype(fr) = 1;
 	end
 
@@ -279,8 +279,8 @@ for fr = 1:Ng
 	% Check if getting stuck 
 	% 	(going down and within friction cone)
 	% 
-	gp_fr        = (gp1_fr + gp2_fr)/2;
-	gpz(fr)      = gp_fr(3);
+	gp_fr   = (gp1_fr + gp2_fr)/2;
+	gpz(fr) = gp_fr(3);
 	
 	if fr > 1
 	    % if gpz(fr) < gpz(fr-1)

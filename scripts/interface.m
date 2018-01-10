@@ -106,7 +106,8 @@ para.GRIPPER_Z_LIMIT    = 5; % 15 finger position limit
 para.FINGER_OPEN_SPACE  = 15; % 45mm each side. used for checking collision with table
 para.FINGER_RADIUS      = 0; % used for checking collision with table
 para.MU                 = 0.8; % friction between object and the table
-para.COM_ERR            = 5; % uncertainties in COM measurement
+para.COM_ERR            = 2; % uncertainties in COM measurement
+para.GP_ERR            = 5; % uncertainties in Grasp point measurement
 									  
 % optimization parameter
 para.opt_obj_N               = 20;
