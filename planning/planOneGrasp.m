@@ -283,7 +283,7 @@ for fr = 1:Ng
 	gpz(fr)      = gp_fr(3);
 	
 	if fr > 1
-	    if gpz(fr) < gpz(fr-1)
+	    % if gpz(fr) < gpz(fr-1)
 	        % going down
 			[~, cpid] = min(points_fr(3, :)); % < 2*ps_err + 1e-4;
 			cp        = points_fr(:, cpid);
@@ -296,7 +296,7 @@ for fr = 1:Ng
 				gp_cp_old           = gp_fr_old - cp_old;
 				gpxy_delta(:, fr-1) = gp_cp(1:2) - gp_cp_old(1:2);
 	        end
-		end
+		% end
 	else
 		gp0 = gp_fr;
 	end
