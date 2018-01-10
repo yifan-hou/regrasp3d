@@ -271,7 +271,7 @@ for fr = 1:Ng
 	cp_GF = quatOnVec(cp_fr, qfr_inv);
 	cp_l  = min(cp_GF(2, :)) - gp1_GF(2);
 	cp_r  = max(cp_GF(2, :)) - gp1_GF(2);
-	if (cp_l*com_y > 0) && (cp_r*com_y > 0)
+	if ((com_y+para.COM_ERR)*(com_y-para.COM_ERR) > 0) && (cp_l*com_y > 0) && (cp_r*com_y > 0)
 		rtype(fr) = 1;
 	end
 
