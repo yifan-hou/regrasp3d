@@ -130,7 +130,7 @@ end
 if ~isempty(p2_id)
     grasps.count                      = grasps.count + 1;
     grasps.points(:, grasps.count, 1) = p1;
-    grasps.points(:, grasps.count, 2) = p2;
+    grasps.points(:, grasps.count, 2) = p2(:,p2_id);
     grasps.range(:, grasps.count)     = grasp_feasible_range;
     grasps.ref_frame(:, grasps.count) = grasp_frame;
 

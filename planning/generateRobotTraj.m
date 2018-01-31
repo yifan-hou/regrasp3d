@@ -1,6 +1,6 @@
 % gp: grasp points in world frame
 % q: 4x1
-function generateRobotTraj(plan)
+function [] = generateRobotTraj(plan)
 % global mesh 
 
 clc;

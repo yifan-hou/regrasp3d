@@ -145,6 +145,13 @@ m_is_stable = true(1, NFS);
 disp('[GetObject] Stable modes manual checking:');
 for i=1:NFS
     plotObject(mesh_s, 1, m_quat(:,i));
+    view(3);
+    plotObject(mesh_s, 2, m_quat(:,i));
+    view(90, 0);
+    plotObject(mesh_s, 3, m_quat(:,i));
+    view(0, 0);
+    
+    
     % Construct a questdlg with two options
     choice = questdlg('Accept this stable pose?', ...
 	'Stable Pose Checking', ...

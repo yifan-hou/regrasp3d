@@ -45,7 +45,7 @@ end
 
 
 % --- Executes just before interface is made visible.
-function interface_OpeningFcn(hObject, eventdata, handles, varargin)
+function [] = interface_OpeningFcn(hObject, eventdata, handles, varargin)
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -55,7 +55,7 @@ function interface_OpeningFcn(hObject, eventdata, handles, varargin)
 % Choose default command line output for interface
 handles.output = hObject;
 
-files = dir('../model/real_objects/*.mat');
+files = dir('../model/test_objects/*.mat');
 set(handles.LB_files,'string',{files.name});
 
 % Update handles structure
@@ -64,7 +64,7 @@ guidata(hObject, handles);
 % UIWAIT makes interface wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
 addpath ../model
-addpath ../model/real_objects
+addpath ../model/test_objects
 addpath ../model/results
 addpath ../offline
 addpath ../optimization
@@ -91,7 +91,7 @@ varargout{1} = handles.output;
 
 
 
-function BTN_load_model_Callback(hObject, eventdata, handles)
+function [] = BTN_load_model_Callback(hObject, eventdata, handles)
 global filename para fgraph pgraph mesh mesh_s grasps gripper q0 qf
 clc;
 load(filename);
@@ -157,7 +157,7 @@ set(handles.BTN_rand_final, 'Enable', 'on');
 
 
 
-function BTN_plan_Callback(hObject, eventdata, handles)
+function [] = BTN_plan_Callback(hObject, eventdata, handles)
 clc;
 global para fgraph pgraph mesh gripper grasps q0 qf qg0 qgf% inputs
 global path_found plan % outputs
@@ -192,19 +192,19 @@ else
 end
 
 
-function BTN_rand_initial_Callback(hObject, eventdata, handles)
+function [] = BTN_rand_initial_Callback(hObject, eventdata, handles)
 global mesh q0
 q0 = quatRand();
 plotObject(mesh, handles.AX_initial, q0);
 
 
-function BTN_rand_final_Callback(hObject, eventdata, handles)
+function [] = BTN_rand_final_Callback(hObject, eventdata, handles)
 global mesh qf
 qf = quatRand();
 plotObject(mesh, handles.AX_final, qf);
 
 
-function BTN_animate_Callback(hObject, eventdata, handles)
+function [] = BTN_animate_Callback(hObject, eventdata, handles)
 global path_found plan
 
 if path_found
@@ -213,7 +213,7 @@ end
 
 
 % --- Executes on selection change in LB_files.
-function LB_files_Callback(hObject, eventdata, handles)
+function [] = LB_files_Callback(hObject, eventdata, handles)
 global filename;
 % hObject    handle to LB_files (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -226,7 +226,7 @@ filename = contents{get(hObject,'Value')};
 
 
 % --- Executes during object creation, after setting all properties.
-function LB_files_CreateFcn(hObject, eventdata, handles)
+function [] = LB_files_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to LB_files (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -239,7 +239,7 @@ end
 
 
 % --- Executes on button press in BTN_rand_grasp0.
-function BTN_rand_grasp0_Callback(hObject, eventdata, handles)
+function [] = BTN_rand_grasp0_Callback(hObject, eventdata, handles)
 global q0  % input
 global qg0 grasp_id_0 % output
 global grasps gripper mesh pgraph para
@@ -265,7 +265,7 @@ rotate3d on;
 
 
 % --- Executes on button press in BTN_rand_graspf.
-function BTN_rand_graspf_Callback(hObject, eventdata, handles)
+function [] = BTN_rand_graspf_Callback(hObject, eventdata, handles)
 global qf 
 global qgf grasp_id_f
 global grasps gripper mesh pgraph para
@@ -290,7 +290,7 @@ plotGripper(handles.AX_final, gripper, qf, [gp1f_w gp2f_w], qgf);
 rotate3d on;
 
 % --- Executes on button press in CB_auto_grasp0.
-function CB_auto_grasp0_Callback(hObject, eventdata, handles)
+function [] = CB_auto_grasp0_Callback(hObject, eventdata, handles)
 % hObject    handle to CB_auto_grasp0 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -328,7 +328,7 @@ else
 end
 
 % --- Executes on button press in CB_auto_graspf.
-function CB_auto_graspf_Callback(hObject, eventdata, handles)
+function [] = CB_auto_graspf_Callback(hObject, eventdata, handles)
 % hObject    handle to CB_auto_graspf (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -368,7 +368,7 @@ else
 end
 
 % --- Executes on slider movement.
-function Slider_grasp0_Callback(hObject, eventdata, handles)
+function [] = Slider_grasp0_Callback(hObject, eventdata, handles)
 % hObject    handle to Slider_grasp0 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -378,7 +378,7 @@ function Slider_grasp0_Callback(hObject, eventdata, handles)
 
 
 % --- Executes during object creation, after setting all properties.
-function Slider_grasp0_CreateFcn(hObject, eventdata, handles)
+function [] = Slider_grasp0_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to Slider_grasp0 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -390,7 +390,7 @@ end
 
 
 % --- Executes on slider movement.
-function Slider_graspf_Callback(hObject, eventdata, handles)
+function [] = Slider_graspf_Callback(hObject, eventdata, handles)
 % hObject    handle to Slider_graspf (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -400,7 +400,7 @@ function Slider_graspf_Callback(hObject, eventdata, handles)
 
 
 % --- Executes during object creation, after setting all properties.
-function Slider_graspf_CreateFcn(hObject, eventdata, handles)
+function [] = Slider_graspf_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to Slider_graspf (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -412,7 +412,7 @@ end
 
 
 % 	Re-orienting test
-function BTN_compare_Callback(hObject, eventdata, handles)
+function [] = BTN_compare_Callback(hObject, eventdata, handles)
 clc;
 global para fgraph pgraph mesh gripper grasps % inputs
 
@@ -492,7 +492,7 @@ set(handles.BTN_show_results, 'Enable', 'on');
 
 
 % --- Executes on button press in BTN_show_results.
-function BTN_show_results_Callback(hObject, eventdata, handles)
+function [] = BTN_show_results_Callback(hObject, eventdata, handles)
 % hObject    handle to BTN_show_results (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -570,7 +570,7 @@ disp(['# of regrasp: ' num2str(sum(pivoting_NRegrasp_aver)) '		' num2str(sum(pic
 
 
 % --- Executes on button press in BTN_compare2.
-function BTN_compare2_Callback(hObject, eventdata, handles)
+function [] = BTN_compare2_Callback(hObject, eventdata, handles)
 clc;
 global para fgraph pgraph mesh gripper grasps % inputs
 
@@ -643,14 +643,14 @@ for experiment = 1:length(tilt_limit_array)
 end % end all experiments
 
 % --- Executes on button press in BTN_show_results2.
-function BTN_show_results2_Callback(hObject, eventdata, handles)
+function [] = BTN_show_results2_Callback(hObject, eventdata, handles)
 % hObject    handle to BTN_show_results2 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 
 % --- Executes on button press in BTN_gentraj.
-function BTN_gentraj_Callback(hObject, eventdata, handles)
+function [] = BTN_gentraj_Callback(hObject, eventdata, handles)
 % hObject    handle to BTN_gentraj (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)

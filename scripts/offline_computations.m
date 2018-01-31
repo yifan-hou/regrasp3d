@@ -5,7 +5,7 @@ clear;clc;
 
 addpath ../planning
 addpath ../model
-addpath ../model/real_objects
+addpath ../model/test_objects
 addpath ../offline
 
 % Constraints
@@ -45,29 +45,36 @@ para.showGraspChecking_id   = 2;
 gripper = getGripper();
 
 % get object mesh
-file_dir = dir('../model/real_objects/*.stl');
+file_dir = dir('../model/test_objects/*.stl');
 
-COM = [
-		0 -9.65 0; % big screw
-	   0 -4.647 13.27; % steel hook
-	   -10 10 0 % pipe fitting
+% COM = [
+% 		0 -9.65 0; % big screw
+% 	   0 -4.647 13.27; % steel hook
+% 	   -10 10 0 % pipe fitting
+% 	   ]';
+COM = [-3 0.3 36; % bar clamp
+	   0.2 -3 37.5; % e stop holder
+	   0 2.8 39.6; % nozzle
+	   -0.3 4.6 39 % part1
 	   ]';
 
-for i = 3:length(file_dir)
+
+for i = 4:length(file_dir)
 	% 
 	% get file name
 	% 
 	filename = file_dir(i).name;	
-    full_path = ['../model/real_objects/' filename(1:end-4) '.mat'];
+    full_path = ['../model/test_objects/' filename(1:end-4) '.mat'];
 	disp(['Processing # ' num2str(i) ' of ' num2str(length(file_dir)) ', name: ' filename]);
     
     % 
     % load the stl file
     % 
 	% Read object stl file
-	[fgraph, pgraph, mesh, mesh_s] = getObject(para, COM(:, i), filename);
+% 	[fgraph, pgraph, mesh, mesh_s] = getObject(para, COM(:, i), filename);
+%     save debug fgraph pgraph mesh mesh_s
 	% % or, load existed object files
-% 	load debug; 
+	load debug; 
 
 	% 
 	% compute grasps
