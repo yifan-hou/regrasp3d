@@ -1,6 +1,7 @@
 function [plan, flag] = planGripper(obj_plan, grasp_id, qg0, qgf)
 global mesh grasps pgraph para
 
+plan = [];
 % -----------------------------------------
 % 	Optimization: find gripper trajectory
 % 	Formulated as a QP

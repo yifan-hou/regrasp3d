@@ -29,7 +29,9 @@ tablezf = min(pointsf(3,:));
 grasps_flag  = ones(Ng, 1);
 
 Nf   = 100;
-qobj = quatSquad(0:N-1, qobj, (0:Nf-1)/(Nf-1)*(N-1));
+qobj = quatSlerp(q0, qf, (1:Nf)/Nf);
+
+% qobj = quatSquad(0:N-1, qobj, (0:Nf-1)/(Nf-1)*(N-1));
 
 cf_feasible   = cell(Ng, 1);
 rtype         = cell(Ng, 1);
@@ -40,7 +42,9 @@ grasp_qframes = cell(Ng, 1);
 stuck         = cell(Ng, 1);
 gpz           = cell(Ng, 1);
 gpxy_delta    = cell(Ng, 1);
-gp0           = cell(Ng, 1);
+gp0           = cell(Ng, 1); % initial
+gp1           = cell(Ng, 1); % left
+gp2           = cell(Ng, 1); % right
 
 for g = 1:Ng
 
@@ -132,6 +136,9 @@ for g = 1:Ng
 	stuck{g}         = false(1, Nf);
 	gpz{g}           = zeros(1, Nf); % z pos of gripper
 	gpxy_delta{g}    = zeros(2, Nf); % xy offset of gripper
+	gp1{g}           = zeros(3, Ng); % grasp position (includes offset)
+	gp2{g}           = zeros(3, Ng);
+
 
 	is_feasible = true;
 	for fr = 1:Nf
@@ -163,6 +170,8 @@ for g = 1:Ng
 		points_fr(3,:)    = points_fr(3,:) - zoffset;
 		gp1_fr(3)         = gp1_fr(3) - zoffset;
 		gp2_fr(3)         = gp2_fr(3) - zoffset;
+		gp1{g}(:, fr)     = gp1_fr;
+		gp2{g}(:, fr)     = gp2_fr;
 		% 
 	    % check z limit
 	    % 
@@ -297,28 +306,31 @@ end
 
 grasps_score = zeros(Nsol, 1);
 for i = 1:Nsol
-    grasps_score(i) = min(gpz{feasible_id(i)}) + 0.2*min(tilt_range{feasible_id(i)}(2,:));
+	minz1 = min(gp1{feasible_id(i)}(3,:));
+	minz2 = min(gp2{feasible_id(i)}(3,:));
+    grasps_score(i) = min(minz1, minz2) + 0.2*min(tilt_range{feasible_id(i)}(2,:));
 end
 
 dispC('scores: ');
 dispC(grasps_score);
 
 [~, id_sel] = max(grasps_score);
-id_sel      = feasible_id(id_sel);
+id_sel_feasible      = feasible_id(id_sel);
 
 obj_plan.Nf   = Nf;
 obj_plan.qobj = qobj;
-obj_plan.grasp_qframes = grasp_qframes{id_sel};
-obj_plan.cf_range      = cf_range{id_sel};     
-obj_plan.cf_feasible   = cf_feasible{id_sel};        
-obj_plan.tilt_range    = tilt_range{id_sel};   
-obj_plan.rtype         = rtype{id_sel};        
-obj_plan.obj_rotation  = obj_rotation{id_sel}; 
-obj_plan.stuck         = stuck{id_sel};        
-obj_plan.gpz           = gpz{id_sel};          
-obj_plan.gp0           = gp0{id_sel};          
-obj_plan.gpxy_delta    = gpxy_delta{id_sel};   
+obj_plan.grasp_qframes = grasp_qframes{id_sel_feasible};
+obj_plan.cf_range      = cf_range{id_sel_feasible};     
+obj_plan.cf_feasible   = cf_feasible{id_sel_feasible};        
+obj_plan.tilt_range    = tilt_range{id_sel_feasible};   
+obj_plan.rtype         = rtype{id_sel_feasible};        
+obj_plan.obj_rotation  = obj_rotation{id_sel_feasible}; 
+obj_plan.stuck         = stuck{id_sel_feasible};        
+obj_plan.gpz           = gpz{id_sel_feasible};          
+obj_plan.gp0           = gp0{id_sel_feasible};          
+obj_plan.gpxy_delta    = gpxy_delta{id_sel_feasible};   
 
+id_sel = grasp_ids(id_sel_feasible);
 
 % % -----------------------------------------
 % % 	Optimize the trajectory
@@ -374,4 +386,47 @@ obj_plan.gpxy_delta    = gpxy_delta{id_sel};
 % temp        = ones(3,1)*(sin(theta)./theta);
 % temp(:, id) = 0;
 % qobj        = [cos(theta); temp.*n];
+
+end
+
+
+
+
+
+% set sf_range to all zero, except the zone of 1 that constains id
+function sf_range = singleOutSFRange(sf_range, id)
+N = length(sf_range);
+ids = false(N,1);
+
+for i = id:-1:id - 360
+	if circQuery(sf_range, i) == 1
+		ids = circQuery(ids, i, 1);
+	else
+		break;
+	end
+end
+
+for i = id+1:id + 360
+	if circQuery(sf_range,i) == 1
+		ids = circQuery(ids, i, 1);
+	else
+		break;
+	end
+end
+
+sf_range      = ids;
+
+end
+
+
+function [z0_ang, z0_id] = getIDinCfRange(qg, q, refz_o, refx_o)
+	qgz    = quatOnVec([0 0 1]', qg);
+	qgz_o  = quatOnVec(qgz, quatInv(q));
+	z0_ang = angBTVec(refz_o, qgz_o, refx_o, 1);
+	z0_id  = round(180/pi*z0_ang);
+end
+
+
+
+
 
