@@ -1,6 +1,6 @@
 % gp: grasp points in world frame
 % q: 4x1
-function animatePlan(fidOrhandle, plan)
+function [] = animatePlan(fidOrhandle, plan)
 global mesh gripper grasps
 
 
@@ -41,7 +41,7 @@ handles_object.surf    = plotObject(mesh, fidOrhandle, q0); % call plotObject wi
 handles_gripper        = plotGripper(fidOrhandle, gripper, q0, [gp1 gp2], plan{1}.qgrp(:,1));
 handles_object.cp      = plot3(cp_w(1,:), cp_w(2,:), cp_w(3,:), '.k', 'markersize', 30);
 handles_object.com     = plot3(com_w(1), com_w(2), com_w(3), 'r*', 'markersize', 8);
-handles_object.gravity = plot3(com_w(1)+[0 0], com_w(2)+[0 0], com_w(3)+[0 -0.4], 'r-', 'linewidth', 2);
+% handles_object.gravity = plot3(com_w(1)+[0 0], com_w(2)+[0 0], com_w(3)+[0 -0.4], 'r-', 'linewidth', 2);
 
 % table
 table.vertices      = zeros(3,8);
@@ -53,7 +53,7 @@ table.vertices(:,5) = [1   1 0]';
 table.vertices(:,6) = [-1  1 0]';
 table.vertices(:,7) = [-1  1 -0.1]';
 table.vertices(:,8) = [1   1 -0.1]';
-table.vertices = 100*table.vertices';
+table.vertices      = 80*(table.vertices)';
 table.faces = [1 4 3;
 	   1 2 3;
 	   6 1 2;
@@ -77,6 +77,27 @@ xlabel('X'); ylabel('Y'); zlabel('Z');
 axis(100*[-1 1 -1 1 0 2]);
 view(-43, 27);
 axis off
+
+% draw coordinate system for object
+arrowLength = 1*(max(points_w(1,:)) - min(points_w(1,:)));
+stemWidth   = 0.1*arrowLength;
+tipWidth    = 0.15*arrowLength;
+
+% xobj = arrowLength*quatOnVec([1 0 0]', q0);
+% yobj = arrowLength*quatOnVec([0 1 0]', q0);
+% zobj = arrowLength*quatOnVec([0 0 1]', q0);
+% handles_object.arrow_x = mArrow3(com_w, com_w+xobj, 'color','r', 'stemWidth', stemWidth, 'tipWidth', tipWidth);
+% handles_object.arrow_y = mArrow3(com_w, com_w+yobj, 'color','g', 'stemWidth', stemWidth, 'tipWidth', tipWidth);
+% handles_object.arrow_z = mArrow3(com_w, com_w+zobj, 'color','b', 'stemWidth', stemWidth, 'tipWidth', tipWidth);
+
+gp   = [gp1 + gp2]/2;
+xgrp = arrowLength*quatOnVec([1 0 0]', plan{1}.qgrp(:,1));
+ygrp = arrowLength*quatOnVec([0 1 0]', plan{1}.qgrp(:,1));
+zgrp = arrowLength*quatOnVec([0 0 1]', plan{1}.qgrp(:,1));
+handles_gripper.arrow_x = mArrow3(gp, gp+xgrp, 'color','r', 'stemWidth', stemWidth, 'tipWidth', tipWidth);
+handles_gripper.arrow_y = mArrow3(gp, gp+ygrp, 'color','g', 'stemWidth', stemWidth, 'tipWidth', tipWidth);
+handles_gripper.arrow_z = mArrow3(gp, gp+zgrp, 'color','b', 'stemWidth', stemWidth, 'tipWidth', tipWidth);
+
 
 % --------------------------------------
 % 	Begin Animation
@@ -123,8 +144,14 @@ for p = 1:N
 		cpid = ps_(3,:) < 1e-5;
 		cp_  = ps_(:,cpid);
 
+		aobj.x = arrowLength*quatOnVec([1 0 0]', qobj);
+		aobj.y = arrowLength*quatOnVec([0 1 0]', qobj);
+		aobj.z = arrowLength*quatOnVec([0 0 1]', qobj);
+		agrp.x = arrowLength*quatOnVec([1 0 0]', qgrp);
+		agrp.y = arrowLength*quatOnVec([0 1 0]', qgrp);
+		agrp.z = arrowLength*quatOnVec([0 0 1]', qgrp);
 
-		updatePlot(qobj, qgrp, gp1_, gp2_, cp_, com_, ps_, handles_object, handles_gripper);
+		updatePlot(qobj, qgrp, gp1_, gp2_, cp_, com_, ps_, aobj, agrp, handles_object, handles_gripper);
         pause(0.1);
 	end
 end
@@ -134,25 +161,35 @@ end
 
 
 
-function updatePlot(qobj, qgp0, gp1, gp2, cp_, com_, ps_, handles_object, handles_gripper) 
-	global mesh gripper
+function [] = updatePlot(qobj, qgp0, gp1, gp2, cp_, com_, ps_, aobj, agrp, handles_object, handles_gripper) 
+	global gripper
 	
 	% update plot
-
 	handles_object.cp.XData        = cp_(1,:);
 	handles_object.cp.YData        = cp_(2,:);
 	handles_object.cp.ZData        = cp_(3,:);
 	handles_object.com.XData       = com_(1);
 	handles_object.com.YData       = com_(2);
 	handles_object.com.ZData       = com_(3);
-	handles_object.gravity.XData   = com_(1)+[0  0]; 
-	handles_object.gravity.YData   = com_(2)+[0  0]; 
-	handles_object.gravity.ZData   = com_(3)+[0 -1];
+% 	handles_object.gravity.XData   = com_(1)+[0  0]; 
+% 	handles_object.gravity.YData   = com_(2)+[0  0]; 
+% 	handles_object.gravity.ZData   = com_(3)+[0 -1];
 
 	handles_object.surf.Vertices   = ps_';
 
+	gp = (gp1+gp2)/2;
+
+	mArrow3(gp, gp+agrp.x, 'handle', handles_gripper.arrow_x);
+	mArrow3(gp, gp+agrp.y, 'handle', handles_gripper.arrow_y);
+	mArrow3(gp, gp+agrp.z, 'handle', handles_gripper.arrow_z);
+
+% 	mArrow3(com_, com_+aobj.x, 'handle', handles_object.arrow_x);
+% 	mArrow3(com_, com_+aobj.y, 'handle', handles_object.arrow_y);
+% 	mArrow3(com_, com_+aobj.z, 'handle', handles_object.arrow_z);
+
 	plotGripper([], gripper, qobj, [gp1 gp2], qgp0, handles_gripper);
 	
+
 
 	% axis([com_(1)-1 com_(1)+1 com_(2)-1 com_(2)+1 com_(3)-1 com_(3)+1]);
 	% axis equal;

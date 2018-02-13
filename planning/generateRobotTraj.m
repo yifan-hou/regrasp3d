@@ -7,8 +7,8 @@ clc;
 % --------------------------------------
 % 	Robot coordinate frames
 % --------------------------------------
-trans_p2r  = [17.37 -474.66 5]' + [0 100 0]';
-compensate = 36;
+trans_p2r  = [234.51 -347.26 5]';
+compensate = 180-22.5;
 Velocity_p = 100; % mm/s
 Velocity_q = 15*pi/180; % mm/s
 Rate       = 500; %Hz

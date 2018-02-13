@@ -55,7 +55,7 @@ function [] = interface_OpeningFcn(hObject, eventdata, handles, varargin)
 % Choose default command line output for interface
 handles.output = hObject;
 
-files = dir('../model/test_objects/*.mat');
+files = dir('../model/real_objects/*.mat');
 set(handles.LB_files,'string',{files.name});
 
 % Update handles structure
@@ -64,7 +64,7 @@ guidata(hObject, handles);
 % UIWAIT makes interface wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
 addpath ../model
-addpath ../model/test_objects
+addpath ../model/real_objects
 addpath ../model/results
 addpath ../offline
 addpath ../optimization
@@ -102,12 +102,12 @@ load(filename);
 
 % planning parameter
 para.GRIPPER_TILT_LIMIT = 30*pi/180; % tilting angle tolerance
-para.GRIPPER_Z_LIMIT    = 5; % 15 finger position limit
-para.FINGER_OPEN_SPACE  = 15; % 45mm each side. used for checking collision with table
+para.GRIPPER_Z_LIMIT    = 0; % 5 finger position limit
+para.FINGER_OPEN_SPACE  = 0; % 15mm each side. used for checking collision with table
 para.FINGER_RADIUS      = 0; % used for checking collision with table
 para.MU                 = 0.8; % friction between object and the table
-para.COM_ERR            = 2; % uncertainties in COM measurement
-para.GP_ERR            = 20; % uncertainties in Grasp point measurement
+para.COM_ERR            = 0; % 2 uncertainties in COM measurement
+para.GP_ERR            = 0; % 20 uncertainties in Grasp point measurement
 									  
 % optimization parameter
 para.opt_obj_N               = 20;

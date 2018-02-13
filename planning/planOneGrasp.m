@@ -390,14 +390,14 @@ for i = 1:length(x)
 end
 
 % plot the planning problem for grp
-% figure(1); clf(1);hold on;
-% plot([1:Ng], x,'- .b');
-% plot(find(paraOpt_GRP.rtype~=0), x(paraOpt_GRP.rtype~=0),'og');
-% plot([1:Ng], xrange(1,:), '-r');
-% plot([1:Ng], xrange(2,:), '-r');
-% plot([1:Ng], obj_rotation, '-y');
-% plot(1, paraOpt_GRP.x0, '.k', 'markersize',10);
-% plot(Ng, paraOpt_GRP.xf, '.k', 'markersize',10);
+figure(1); clf(1);hold on;
+plot([1:Ng], x,'- .b');
+plot(find(paraOpt_GRP.rtype~=0), x(paraOpt_GRP.rtype~=0),'og');
+plot([1:Ng], xrange(1,:), '-r');
+plot([1:Ng], xrange(2,:), '-r');
+plot([1:Ng], obj_rotation, '-y');
+plot(1, paraOpt_GRP.x0, '.k', 'markersize',10);
+plot(Ng, paraOpt_GRP.xf, '.k', 'markersize',10);
 
 if norm(con_x)+norm(con_f) > 0.1
 	% infeaseble 

@@ -45,7 +45,7 @@ end
 % -----------------------------------
 
 % get range
-[~, ~, data] = getProperGrasp(grasp_id, q0, gripper_cone_width0, false);
+[~, data] = getProperGrasp(grasp_id, q0, gripper_cone_width0, false);
 id_center    = data.id_center;
 range0       = data.range;
 qg0frame     = data.qg0;
@@ -59,7 +59,7 @@ if ~isempty(qg0)
 	range0      = circQuery(0*range0, angqg0, angqg0_zone);
 end
 
-[~, ~, data] = getProperGrasp(grasp_id, qf, gripper_cone_widthf, false);
+[~, data] = getProperGrasp(grasp_id, qf, gripper_cone_widthf, false);
 rangef       = data.range;
 qgfframe     = data.qg0;
 if ~isempty(qgf)

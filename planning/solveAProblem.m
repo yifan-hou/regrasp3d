@@ -104,46 +104,25 @@ while true
 % 		hold on; plot3(gp2f(1,:), gp2f(2,:), gp2f(3,:), '.', 'markersize',35);
 % 		input('Press ENTER to continue...');
 
+		edge_solved = true;
+		% 
+		% 	Find a grasp, plan obj motion
+		% 
+		[obj_plan, id_sel] = planObject(id_common, path_q(:,p), path_q(:,p+1), qg0_p, qgf_p, exactq);
 
-		for i = 1:length(id_common)
-			path_graspid(p) = id_common(i);
+		if isempty(id_sel)
+            dispC('  --- [Object] No solution. ');
+            edge_solved = false;
+        else
+        	[plan{p}, flag] = planGripper(obj_plan, id_sel, qg0_p, qgf_p);
+        	if flag < 0
+        		edge_solved = false;
+        	else
+        		path_q(:, p+1) = plan{p}.qobj(:,end);
+        	end
+    	end
 
-			if strcmp(method, 'pickplace')
-				[plan_one_grasp, flag] = planOneGraspPickPlace(id_common(i), path_q(:,p), path_q(:,p+1), qg0_p, qgf_p);
-			else
-				[plan_one_grasp, flag] = planOneGrasp(id_common(i), path_q(:,p), path_q(:,p+1), qg0_p, qgf_p, exactq);
-			end
-
-		    if flag <= 0
-                switch flag
-                    case -1
-                        dispC(['  --- Grasp ' num2str(i) ' [Pre-checking] initial/final gripper collides with table']);
-                    case -2
-                        dispC(['  --- Grasp ' num2str(i) ' [Pre-checking] initial/final grasp infeasible in cf_range']);
-                    case -3
-                        dispC(['  --- Grasp ' num2str(i) ' [q obj optimization] violates gripper tilt angle limit ']);
-                    case -4
-                        dispC(['  --- Grasp ' num2str(i) ' [q obj optimization] violates gripper Z limit ']);
-                    case -5
-                        dispC(['  --- Grasp ' num2str(i) ' [q obj optimization] infeasible ']);
-                    case -6
-                        dispC(['  --- Grasp ' num2str(i) ' [q obj checking] no collision free path ']);
-                    case -7
-                        dispC(['  --- Grasp ' num2str(i) ' [QP for GRP] infeasible ']);
-                    otherwise
-                        error('Wrong flag');
-                end
-		        continue;
-		    else
-				plan{p}        = plan_one_grasp;
-				path_q(:, p+1) = plan_one_grasp.qobj(:, end);
-		        dispC(['  --- Grasp ' num2str(i) ' works.']);
-		        break;
-		    end
-			% gripper motion closed loop control
-		end
-
-		if isempty(plan{p})
+    	if edge_solved == false
 			dispC(['  Edge #' num2str(p) ' No solution.']);
 			adj_matrix(mode_id_path(p), mode_id_path(p+1)) = 0;
 			adj_matrix(mode_id_path(p+1), mode_id_path(p)) = 0;
@@ -151,6 +130,56 @@ while true
 		elseif p == NP-1
 			path_found = true;
 		end
+
+
+
+
+		% for i = 1:length(id_common)
+		% 	path_graspid(p) = id_common(i);
+
+		% 	if strcmp(method, 'pickplace')
+		% 		[plan_one_grasp, flag] = planOneGraspPickPlace(id_common(i), path_q(:,p), path_q(:,p+1), qg0_p, qgf_p);
+		% 	else
+		% 		[plan_one_grasp, flag] = planOneGrasp(id_common(i), path_q(:,p), path_q(:,p+1), qg0_p, qgf_p, exactq);
+		% 	end
+
+		%     if flag <= 0
+  %               switch flag
+  %                   case -1
+  %                       dispC(['  --- Grasp ' num2str(i) ' [Pre-checking] initial/final gripper collides with table']);
+  %                   case -2
+  %                       dispC(['  --- Grasp ' num2str(i) ' [Pre-checking] initial/final grasp infeasible in cf_range']);
+  %                   case -3
+  %                       dispC(['  --- Grasp ' num2str(i) ' [q obj optimization] violates gripper tilt angle limit ']);
+  %                   case -4
+  %                       dispC(['  --- Grasp ' num2str(i) ' [q obj optimization] violates gripper Z limit ']);
+  %                   case -5
+  %                       dispC(['  --- Grasp ' num2str(i) ' [q obj optimization] infeasible ']);
+  %                   case -6
+  %                       dispC(['  --- Grasp ' num2str(i) ' [q obj checking] no collision free path ']);
+  %                   case -7
+  %                       dispC(['  --- Grasp ' num2str(i) ' [QP for GRP] infeasible ']);
+  %                   otherwise
+  %                       error('Wrong flag');
+  %               end
+		%         continue;
+		%     else
+		% 		plan{p}        = plan_one_grasp;
+		% 		path_q(:, p+1) = plan_one_grasp.qobj(:, end);
+		%         dispC(['  --- Grasp ' num2str(i) ' works.']);
+		%         break;
+		%     end
+		% 	% gripper motion closed loop control
+		% end
+
+		% if isempty(plan{p})
+		% 	dispC(['  Edge #' num2str(p) ' No solution.']);
+		% 	adj_matrix(mode_id_path(p), mode_id_path(p+1)) = 0;
+		% 	adj_matrix(mode_id_path(p+1), mode_id_path(p)) = 0;
+		% 	break;
+		% elseif p == NP-1
+		% 	path_found = true;
+		% end
 
 	end % end a path
 
