@@ -55,7 +55,7 @@ function [] = interface_OpeningFcn(hObject, eventdata, handles, varargin)
 % Choose default command line output for interface
 handles.output = hObject;
 
-files = dir('../model/real_objects/*.mat');
+files = dir('../model/test_objects/*.mat');
 set(handles.LB_files,'string',{files.name});
 
 % Update handles structure
@@ -64,7 +64,7 @@ guidata(hObject, handles);
 % UIWAIT makes interface wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
 addpath ../model
-addpath ../model/real_objects
+addpath ../model/test_objects
 addpath ../model/results
 addpath ../offline
 addpath ../optimization
@@ -102,12 +102,12 @@ load(filename);
 
 % planning parameter
 para.GRIPPER_TILT_LIMIT = 30*pi/180; % tilting angle tolerance
-para.GRIPPER_Z_LIMIT    = 0; % 5 finger position limit
-para.FINGER_OPEN_SPACE  = 0; % 15mm each side. used for checking collision with table
-para.FINGER_RADIUS      = 0; % used for checking collision with table
+para.GRIPPER_Z_LIMIT    = 3; % 5 finger position limit
+para.FINGER_OPEN_SPACE  = 20; % 15mm each side. used for checking collision with table
+para.FINGER_RADIUS      = 10; % used for checking collision with table
 para.MU                 = 0.8; % friction between object and the table
-para.COM_ERR            = 0; % 2 uncertainties in COM measurement
-para.GP_ERR            = 0; % 20 uncertainties in Grasp point measurement
+para.COM_ERR            = 2; % 2 uncertainties in COM measurement
+para.GP_ERR             = 15; % 20 uncertainties in Grasp point measurement
 									  
 % optimization parameter
 para.opt_obj_N               = 20;
@@ -417,74 +417,79 @@ clc;
 global para fgraph pgraph mesh gripper grasps % inputs
 
 para.printing = false;
-
-
+finger_open_range = [5 10 15 20 25 30 35 40 45];
+Nexp = length(finger_open_range);
 
 % ------------------------------------------
 % 	get list of objects
 % ------------------------------------------
-files = dir('../model/data/*.mat');
+files = dir('../model/test_objects/*.mat');
 Nobj  = length(files);
 
-pivoting.plans       = cell(1, Nobj);
-pivoting.scores      = cell(1, Nobj);
-pivoting.path_found  = [];
-pickplace.plans      = cell(1, Nobj);
-pickplace.scores     = cell(1, Nobj);
-pickplace.path_found = [];
 
-for i_obj = 1:Nobj
-	load(files(i_obj).name);
-	disp(['[Object #' num2str(i_obj) '] ---- ' files(i_obj).name ' ----']);
+% pivoting.plans       = cell(1, Nobj);
+% pivoting.scores      = cell(1, Nobj);
+% pivoting.path_found  = [];
+% pickplace.plans      = cell(1, Nobj);
+% pickplace.scores     = cell(1, Nobj);
+% pickplace.path_found = [];
+pivoting.path_found  = cell(1, Nexp);
+pickplace.path_found = cell(1, Nexp);
 
-	% get the list of stable poses
-	% 	fgraph.quat(:,i)
-	% 	fgraph.grasps(i, :)
-	% 	fgraph.NM
+for ex = 1:Nexp
+	para.FINGER_OPEN_SPACE = finger_open_range(ex);
+	pivoting.path_found{ex} = [];
+	pickplace.path_found{ex} = [];
 
-	% list of problems
-	C    = nchoosek(1:fgraph.NM, 2);
-	NP_i = size(C, 1); % number of problems for this object
-	if NP_i > 30
-		NP_i = 30;
-		C    = C(randi(NP_i, [1 30]), :);
-	end
-	disp(['[Stable Modes: ' num2str(fgraph.NM) '	Problems: ' num2str(NP_i)]);
+	disp(['[Finger Open Space: ' num2str(para.FINGER_OPEN_SPACE) ']' ]);
 
-	pivoting.plans{i_obj}       = cell(1, NP_i);      
-	pivoting.scores{i_obj}      = cell(1, NP_i);     
-	pickplace.plans{i_obj}      = cell(1, NP_i);     
-	pickplace.scores{i_obj}     = cell(1, NP_i);    
+	for i_obj = 1:Nobj
+		load(files(i_obj).name);
+		disp(['[Object #' num2str(i_obj) '] ---- ' files(i_obj).name ' ----']);
 
-	pivoting_path_found  = zeros(1, NP_i);
-	pickplace_path_found = zeros(1, NP_i);
+		% list of problems
+		C    = nchoosek(1:fgraph.NM, 2);
+		NP_i = size(C, 1); % number of problems for this object
+		if NP_i > 30
+			NP_i = 30;
+			C    = C(randi(NP_i, [1 30]), :);
+		end
+		disp(['[Stable Modes: ' num2str(fgraph.NM) '	Problems: ' num2str(NP_i)]);
 
-	for p = 1:NP_i
-		mid0 = C(p, 1);
-		midf = C(p, 2);
+		pivoting.plans{i_obj}       = cell(1, NP_i);      
+		pivoting.scores{i_obj}      = cell(1, NP_i);     
+		pickplace.plans{i_obj}      = cell(1, NP_i);     
+		pickplace.scores{i_obj}     = cell(1, NP_i);    
 
-		q0 = fgraph.quat(:, mid0);
-		qf = fgraph.quat(:, midf);
+		pivoting_path_found  = zeros(1, NP_i);
+		pickplace_path_found = zeros(1, NP_i);
 
-		[pivoting_path_found(p), pivoting.plans{i_obj}{p}]   = solveAProblem(q0, qf, [], [], [], [], 'pivoting');
-		[pickplace_path_found(p), pickplace.plans{i_obj}{p}] = solveAProblem(q0, qf, [], [], [], [], 'pickplace');
+		for p = 1:NP_i
+			mid0 = C(p, 1);
+			midf = C(p, 2);
 
-%         assert(length(pivoting.path_found) == NM);
-		if pickplace_path_found(p) && ~pivoting_path_found(p)
-			error('weird');
+			q0 = fgraph.quat(:, mid0);
+			qf = fgraph.quat(:, midf);
+
+			[pivoting_path_found(p), ~]   = solveAProblem(q0, qf, [], [], [], [], 'pivoting');
+			[pickplace_path_found(p), ~] = solveAProblem(q0, qf, [], [], [], [], 'pickplace');
+
+			if pickplace_path_found(p) && ~pivoting_path_found(p)
+				error('weird');
+			end
+
+			% pivoting.scores{i_obj}{p}  = evalPlan(pivoting.plans{i_obj}{p});
+			% pickplace.scores{i_obj}{p} = evalPlan(pickplace.plans{i_obj}{p});
+
+			disp(['		Problem #' num2str(p) ' of ' num2str(NP_i) ', Pivoting: ' num2str(pivoting_path_found(p)) ', P&P: ' num2str(pickplace_path_found(p))]);
 		end
 
-		pivoting.scores{i_obj}{p}  = evalPlan(pivoting.plans{i_obj}{p});
-		pickplace.scores{i_obj}{p} = evalPlan(pickplace.plans{i_obj}{p});
-
-		disp(['		Problem #' num2str(p) ' of ' num2str(NP_i) ', Pivoting: ' num2str(pivoting_path_found(p)) ', P&P: ' num2str(pickplace_path_found(p))]);
+		pivoting.path_found{ex}  = [pivoting.path_found{ex} pivoting_path_found];
+		pickplace.path_found{ex} = [pickplace.path_found{ex} pickplace_path_found];
 	end
-
-	pivoting.path_found  = [pivoting.path_found pivoting_path_found];
-	pickplace.path_found = [pickplace.path_found pickplace_path_found];
 end
 
-save '../model/results/comparison1.mat' pivoting pickplace;
+save '../results/comparison1.mat' pivoting pickplace finger_open_range;
 set(handles.BTN_show_results, 'Enable', 'on');
 
 
@@ -499,72 +504,75 @@ function [] = BTN_show_results_Callback(hObject, eventdata, handles)
 load 'comparison1.mat'
 clc;
 
-N                 = length(pivoting.path_found);
-N_pivoting_found  = sum(pivoting.path_found);
-N_pickplace_found = sum(pickplace.path_found);
-N
-disp(['NFound: ' num2str(N_pivoting_found) '	' num2str(N_pickplace_found)] );
+Nexp = length(finger_open_range);
 
-pivoting_ex_time      = zeros(1, N);
-pivoting_rotation     = zeros(1, N);
-pivoting_translation  = zeros(1, N);
-pivoting_NRegrasp     = zeros(1, N);
-pickplace_ex_time     = zeros(1, N);
-pickplace_rotation    = zeros(1, N);
-pickplace_translation = zeros(1, N);
-pickplace_NRegrasp    = zeros(1, N);
-
-pivoting_ex_time_total      = 0;
-pivoting_rotation_total     = 0;
-pivoting_translation_total  = 0;
-pivoting_NRegrasp_total     = 0;
-pickplace_ex_time_total     = 0;
-pickplace_rotation_total    = 0;
-pickplace_translation_total = 0;
-pickplace_NRegrasp_total    = 0;
-
-Nobj = length(pivoting.plans);
-count = 0;
-for i_obj = 1:Nobj
-	for i = 1:length(pivoting.plans{i_obj})
-		count = count + 1;
-		if pivoting.path_found(count)
-			pivoting_ex_time(count)      = pivoting.scores{i_obj}{i}.execution_time;
-			pivoting_rotation(count)     = pivoting.scores{i_obj}{i}.gripper_rotation;        
-			pivoting_translation(count)  = pivoting.scores{i_obj}{i}.gripper_translation;  
-			pivoting_NRegrasp(count)     = pivoting.scores{i_obj}{i}.N_regrasp;
-		end
-		if pickplace.path_found(count)
-			pickplace_ex_time(count)     = pickplace.scores{i_obj}{i}.execution_time;
-			pickplace_rotation(count)    = pickplace.scores{i_obj}{i}.gripper_rotation;
-			pickplace_translation(count) = pickplace.scores{i_obj}{i}.gripper_translation;  
-			pickplace_NRegrasp(count)    = pickplace.scores{i_obj}{i}.N_regrasp;
-
-			pivoting_ex_time_total      = pivoting_ex_time_total      + pivoting_ex_time(count);
-			pivoting_rotation_total     = pivoting_rotation_total     + pivoting_rotation(count);
-			pivoting_translation_total  = pivoting_translation_total  + pivoting_translation(count);
-			pivoting_NRegrasp_total     = pivoting_NRegrasp_total     + pivoting_NRegrasp(count);
-			pickplace_ex_time_total     = pickplace_ex_time_total     + pickplace_ex_time(count);
-			pickplace_rotation_total    = pickplace_rotation_total    + pickplace_rotation(count);
-			pickplace_translation_total = pickplace_translation_total + pickplace_translation(count);
-			pickplace_NRegrasp_total    = pickplace_NRegrasp_total    + pickplace_NRegrasp(count);
-		end
-	end
+N_pivoting_found  =  zeros(Nexp, 1);
+N_pickplace_found =  zeros(Nexp, 1);
+for i = 1:Nexp
+	N_pivoting_found(i)  = sum(pivoting.path_found{i});
+	N_pickplace_found(i) = sum(pickplace.path_found{i});
+	disp(['Finger open dist: ' num2str(finger_open_range(i)) ', NFound: ' num2str(N_pivoting_found) '	' num2str(N_pickplace_found)] );
 end
 
-pivoting_ex_time_aver      = pivoting_ex_time_total/N_pickplace_found;
-pivoting_rotation_aver     = pivoting_rotation_total/N_pickplace_found;
-pivoting_translation_aver  = pivoting_translation_total/N_pickplace_found;
-pivoting_NRegrasp_aver     = pivoting_NRegrasp_total/N_pickplace_found;
-pickplace_ex_time_aver     = pickplace_ex_time_total/N_pickplace_found;
-pickplace_rotation_aver    = pickplace_rotation_total/N_pickplace_found;
-pickplace_translation_aver = pickplace_translation_total/N_pickplace_found;
-pickplace_NRegrasp_aver    = pickplace_NRegrasp_total/N_pickplace_found;
+% pivoting_ex_time      = zeros(1, N);
+% pivoting_rotation     = zeros(1, N);
+% pivoting_translation  = zeros(1, N);
+% pivoting_NRegrasp     = zeros(1, N);
+% pickplace_ex_time     = zeros(1, N);
+% pickplace_rotation    = zeros(1, N);
+% pickplace_translation = zeros(1, N);
+% pickplace_NRegrasp    = zeros(1, N);
 
-% disp(['EX time: ' num2str(sum(pivoting_ex_time_aver)) '		' num2str(sum(pickplace_ex_time_aver))] );
-disp(['Total rotation: ' num2str(sum(pivoting_rotation_aver)) '		' num2str(sum(pickplace_rotation_aver))] );
-disp(['Total translation: ' num2str(sum(pivoting_translation_aver)) '		' num2str(sum(pickplace_translation_aver))] );
-disp(['# of regrasp: ' num2str(sum(pivoting_NRegrasp_aver)) '		' num2str(sum(pickplace_NRegrasp_aver))] );
+% pivoting_ex_time_total      = 0;
+% pivoting_rotation_total     = 0;
+% pivoting_translation_total  = 0;
+% pivoting_NRegrasp_total     = 0;
+% pickplace_ex_time_total     = 0;
+% pickplace_rotation_total    = 0;
+% pickplace_translation_total = 0;
+% pickplace_NRegrasp_total    = 0;
+
+% Nobj = length(pivoting.plans);
+% count = 0;
+% for i_obj = 1:Nobj
+% 	for i = 1:length(pivoting.plans{i_obj})
+% 		count = count + 1;
+% 		if pivoting.path_found(count)
+% 			pivoting_ex_time(count)      = pivoting.scores{i_obj}{i}.execution_time;
+% 			pivoting_rotation(count)     = pivoting.scores{i_obj}{i}.gripper_rotation;        
+% 			pivoting_translation(count)  = pivoting.scores{i_obj}{i}.gripper_translation;  
+% 			pivoting_NRegrasp(count)     = pivoting.scores{i_obj}{i}.N_regrasp;
+% 		end
+% 		if pickplace.path_found(count)
+% 			pickplace_ex_time(count)     = pickplace.scores{i_obj}{i}.execution_time;
+% 			pickplace_rotation(count)    = pickplace.scores{i_obj}{i}.gripper_rotation;
+% 			pickplace_translation(count) = pickplace.scores{i_obj}{i}.gripper_translation;  
+% 			pickplace_NRegrasp(count)    = pickplace.scores{i_obj}{i}.N_regrasp;
+
+% 			pivoting_ex_time_total      = pivoting_ex_time_total      + pivoting_ex_time(count);
+% 			pivoting_rotation_total     = pivoting_rotation_total     + pivoting_rotation(count);
+% 			pivoting_translation_total  = pivoting_translation_total  + pivoting_translation(count);
+% 			pivoting_NRegrasp_total     = pivoting_NRegrasp_total     + pivoting_NRegrasp(count);
+% 			pickplace_ex_time_total     = pickplace_ex_time_total     + pickplace_ex_time(count);
+% 			pickplace_rotation_total    = pickplace_rotation_total    + pickplace_rotation(count);
+% 			pickplace_translation_total = pickplace_translation_total + pickplace_translation(count);
+% 			pickplace_NRegrasp_total    = pickplace_NRegrasp_total    + pickplace_NRegrasp(count);
+% 		end
+% 	end
+% end
+
+% pivoting_ex_time_aver      = pivoting_ex_time_total/N_pickplace_found;
+% pivoting_rotation_aver     = pivoting_rotation_total/N_pickplace_found;
+% pivoting_translation_aver  = pivoting_translation_total/N_pickplace_found;
+% pivoting_NRegrasp_aver     = pivoting_NRegrasp_total/N_pickplace_found;
+% pickplace_ex_time_aver     = pickplace_ex_time_total/N_pickplace_found;
+% pickplace_rotation_aver    = pickplace_rotation_total/N_pickplace_found;
+% pickplace_translation_aver = pickplace_translation_total/N_pickplace_found;
+% pickplace_NRegrasp_aver    = pickplace_NRegrasp_total/N_pickplace_found;
+
+% disp(['Total rotation: ' num2str(sum(pivoting_rotation_aver)) '		' num2str(sum(pickplace_rotation_aver))] );
+% disp(['Total translation: ' num2str(sum(pivoting_translation_aver)) '		' num2str(sum(pickplace_translation_aver))] );
+% disp(['# of regrasp: ' num2str(sum(pivoting_NRegrasp_aver)) '		' num2str(sum(pickplace_NRegrasp_aver))] );
 
 
 

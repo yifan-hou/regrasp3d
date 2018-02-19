@@ -2,7 +2,8 @@
 % 	q0, qf: initial/final object pose
 % 	qg0, qgf: initial/final grasp pose (could be empty)
 % 	exactq: true if we want to attain qf exactly. false if we don't care yaw angle
-function [obj_plan, id_sel] = planObject(grasp_ids, q0, qf, qg0, qgf, exactq)
+%   method: 'pickplace' or 'pivoting'
+function [obj_plan, id_sel] = planObject(grasp_ids, q0, qf, qg0, qgf, exactq, method)
 
 global mesh grasps pgraph para
 obj_plan = []; 
@@ -231,22 +232,26 @@ for g = 1:Ng
 		% 
 		% check pivotablity (Robustly)
 		% 
+		if strcmp(method, 'pickplace')
+			rtype{g}(fr) = 0;
+		else
+			% measure in grasp frame
+			qfr_inv = quatInv(qfr);
+			gp1_GF  = quatOnVec(gp1_fr, qfr_inv);
+			gp2_GF  = quatOnVec(gp2_fr, qfr_inv);
+			assert(abs(gp1_GF(2)-gp2_GF(2))<1e-5);
+			com_GF = quatOnVec(com_fr, qfr_inv);
 
-		% measure in grasp frame
-		qfr_inv = quatInv(qfr);
-		gp1_GF  = quatOnVec(gp1_fr, qfr_inv);
-		gp2_GF  = quatOnVec(gp2_fr, qfr_inv);
-		assert(abs(gp1_GF(2)-gp2_GF(2))<1e-5);
-		com_GF = quatOnVec(com_fr, qfr_inv);
+			cpid  = points_fr(3, :) < 2*ps_err + 1e-4;
+			cp_fr = points_fr(:, cpid); % potential contact points
+			cp_GF = quatOnVec(cp_fr, qfr_inv);
 
-		cpid  = points_fr(3, :) < 2*ps_err + 1e-4;
-		cp_fr = points_fr(:, cpid); % potential contact points
-		cp_GF = quatOnVec(cp_fr, qfr_inv);
+			test_points = [min(cp_GF(2, :)), max(cp_GF(2, :)), com_GF(2)+para.COM_ERR, com_GF(2)-para.COM_ERR];
+			test_points_all = [test_points - gp1_GF(2) - para.GP_ERR, test_points - gp1_GF(2) + para.GP_ERR];
 
-		test_points = [min(cp_GF(2, :)), max(cp_GF(2, :)), com_GF(2)+para.COM_ERR, com_GF(2)-para.COM_ERR];
-		test_points_all = [test_points - gp1_GF(2) - para.GP_ERR, test_points - gp1_GF(2) + para.GP_ERR];
-		if (~any(test_points_all > 0)) || (~any(test_points_all < 0))
-			rtype{g}(fr) = 1;
+			if (~any(test_points_all > 0)) || (~any(test_points_all < 0))
+				rtype{g}(fr) = 1;
+			end
 		end
 
 		% 
