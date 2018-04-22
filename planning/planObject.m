@@ -26,10 +26,10 @@ tablezf = min(pointsf(3,:));
 %     -3: [q obj optimization] violates gripper tilt angle limit 
 %     -4: [q obj optimization] violates gripper Z limit 
 %     -5: [q obj optimization] infeasible 
-%     -6: [q obj checking] no collision free path 
+%     -6: [q obj checking] no collision-free path 
 grasps_flag  = ones(Ng, 1);
 
-Nf   = 100;
+Nf   = 50;
 qobj = quatSlerp(q0, qf, (1:Nf)/Nf);
 
 % qobj = quatSquad(0:N-1, qobj, (0:Nf-1)/(Nf-1)*(N-1));
@@ -145,17 +145,6 @@ for g = 1:Ng
 	for fr = 1:Nf
 		qp   = qobj(:, fr);
 		m_fr = quat2m(qp);
-		% 
-		% check tilt angle limit
-		% 
-		gripper_cone_width = getTiltedGripperCone(grasp_ids(g), qp, para.GRIPPER_TILT_LIMIT);
-		if isempty(gripper_cone_width)
-		    grasps_flag(g) = -3;
-			is_feasible = false;
-			break;
-		end
-		tilt_range{g}(1, fr) = - gripper_cone_width;
-		tilt_range{g}(2, fr) =   gripper_cone_width;
 
 		% rotate and compute:
 		% 	points on the object
@@ -173,6 +162,7 @@ for g = 1:Ng
 		gp2_fr(3)         = gp2_fr(3) - zoffset;
 		gp1{g}(:, fr)     = gp1_fr;
 		gp2{g}(:, fr)     = gp2_fr;
+
 		% 
 	    % check z limit
 	    % 
@@ -181,6 +171,18 @@ for g = 1:Ng
 			is_feasible = false;
 			break;
 		end
+
+		% 
+		% check tilt angle limit
+		% 
+		gripper_cone_width = getTiltedGripperCone(gp1_fr, gp2_fr, para.GRIPPER_TILT_LIMIT);
+		if isempty(gripper_cone_width)
+		    grasps_flag(g) = -3;
+			is_feasible = false;
+			break;
+		end
+		tilt_range{g}(1, fr) = - gripper_cone_width;
+		tilt_range{g}(2, fr) =   gripper_cone_width;
 
 		% 
 		% check collision free range
@@ -290,18 +292,18 @@ for g = 1:Ng
 end
 
 % print out summary
-dispC(['  --- # ' num2str(sum(grasps_flag== 1)) ': successful']);
-dispC(['  --- # ' num2str(sum(grasps_flag==-1)) ': [Pre-checking] initial/final gripper collides with table']);
-dispC(['  --- # ' num2str(sum(grasps_flag==-2)) ': [Pre-checking] initial/final grasp infeasible in cf_range']);
-dispC(['  --- # ' num2str(sum(grasps_flag==-3)) ': [q obj optimization] violates gripper tilt angle limit ']);
-dispC(['  --- # ' num2str(sum(grasps_flag==-4)) ': [q obj optimization] violates gripper Z limit ']);
-dispC(['  --- # ' num2str(sum(grasps_flag==-5)) ': [q obj optimization] infeasible ']);
-dispC(['  --- # ' num2str(sum(grasps_flag==-6)) ': [q obj checking] no collision free path ']);
+dispC(['  --- [Object] # ' num2str(sum(grasps_flag== 1)) ': successful']);
+dispC(['  --- --- # ' num2str(sum(grasps_flag==-1)) ': [Pre-checking] initial/final gripper collides with table']);
+dispC(['  --- --- # ' num2str(sum(grasps_flag==-2)) ': [Pre-checking] initial/final grasp infeasible in cf_range']);
+dispC(['  --- --- # ' num2str(sum(grasps_flag==-3)) ': [q obj optimization] violates gripper tilt angle limit ']);
+dispC(['  --- --- # ' num2str(sum(grasps_flag==-4)) ': [q obj optimization] violates gripper Z limit ']);
+dispC(['  --- --- # ' num2str(sum(grasps_flag==-5)) ': [q obj optimization] infeasible ']);
+dispC(['  --- --- # ' num2str(sum(grasps_flag==-6)) ': [q obj checking] no collision free path ']);
 
 % -----------------------------------------
 % 	Compare and pick one grasp
 % -----------------------------------------
-feasible_id = find(grasps_flag);
+feasible_id = find(grasps_flag > 0);
 Nsol        = length(feasible_id);
 if isempty(feasible_id)
 	obj_plan = [];
@@ -316,11 +318,11 @@ for i = 1:Nsol
     grasps_score(i) = min(minz1, minz2) + 0.2*min(tilt_range{feasible_id(i)}(2,:));
 end
 
-dispC('scores: ');
-dispC(grasps_score);
+% dispC('scores: ');
+% dispC(grasps_score);
 
 [~, id_sel] = max(grasps_score);
-id_sel_feasible      = feasible_id(id_sel);
+id_sel_feasible = feasible_id(id_sel);
 
 obj_plan.Nf   = Nf;
 obj_plan.qobj = qobj;

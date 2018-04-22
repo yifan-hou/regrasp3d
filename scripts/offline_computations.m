@@ -1,7 +1,7 @@
 % -----------------------------------------------
 % 		Offline-computation
 % -----------------------------------------------
-clear;clc;
+close all;clear;clc;
 
 addpath ../planning
 addpath ../model
@@ -10,7 +10,7 @@ addpath ../offline
 
 % Constraints
 para.GRIPPER_TILT_LIMIT = 80*pi/180; % tilting angle tolerance
-para.GRIPPER_Z_LIMIT    = 10; % finger position limit
+para.GRIPPER_Z_LIMIT    = 3; % finger position limit
 
 % stable pose computation
 para.bottom_height_tol = 1; % mm points with z < this number will be considered as contact point
@@ -52,19 +52,21 @@ file_dir = dir('../model/test_objects/*.stl');
 % 	   0 -4.647 13.27; % steel hook
 % 	   -10 10 0 % pipe fitting
 % 	   ]';
-COM = [-3 0.3 36; % bar clamp
+COM = [0 -9.65 0; % big screw
+       -3 0.3 36; % bar clamp
 	   0.2 -3 37.5; % e stop holder
 	   0 2.8 39.6; % nozzle
 	   -0.3 4.6 39 % part1
 	   ]';
 
 
-for i = 4:length(file_dir)
+for i = 5:length(file_dir)
 	% 
 	% get file name
 	% 
 	filename = file_dir(i).name;	
-    full_path = ['../model/test_objects/' filename(1:end-4) '.mat'];
+    temp_file_path = [filename(1:end-4) '_temp.mat'];
+    data_file_path = ['../model/test_objects/' filename(1:end-4) '.mat'];
 	disp(['Processing # ' num2str(i) ' of ' num2str(length(file_dir)) ', name: ' filename]);
     
     % 
@@ -72,9 +74,9 @@ for i = 4:length(file_dir)
     % 
 	% Read object stl file
 % 	[fgraph, pgraph, mesh, mesh_s] = getObject(para, COM(:, i), filename);
-%     save debug fgraph pgraph mesh mesh_s
+%     save(temp_file_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s');
 	% % or, load existed object files
-	load debug; 
+	load(temp_file_path); 
 
 	% 
 	% compute grasps
@@ -85,22 +87,9 @@ for i = 4:length(file_dir)
     % breakpoint here!
     disp('Put break point here!!!');
     
+%     load debug
 	[grasps, fgraph] = checkGrasp4StableMode(fgraph, pgraph, mesh, para);
 
 
-	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps', 'gripper');
+	save(data_file_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps', 'gripper');
 end
-
-% % modify error bound
-% file_dir = dir('../model/data/*.stl');
-% for i = 1:length(file_dir)
-% 	filename  = file_dir(i).name;	
-% 	full_path = ['../model/data/' filename(1:end-4) '.mat'];
-% 	load(full_path);
-% 	disp(['Processing # ' num2str(i) ' of ' num2str(length(file_dir)) ', name: ' filename]);
-% 	disp(['err_bound was ' num2str(pgraph.err_bound)]);
-% 	[~, pgraph_amended, ~, ~] = getObject(para, filename);
-%     drawnow
-% 	pgraph.err_bound          = pgraph_amended.err_bound;
-% % 	save(full_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s', 'grasps');
-% end

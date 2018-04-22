@@ -59,6 +59,11 @@ while true
 		dispC('[Planning] No solution found given the available grasps.');
 		break;
 	end
+	if NP > 3
+		dispC('[Planning] No solution within 2 regrasps found given the available grasps.');
+		break;
+	end
+	
 	dispC(['[Planning] Trying Path #' num2str(path_counter) ', Path length = ' num2str(NP) ]);
 	dispC('[Planning] Planning for each edge on the path: ');
 

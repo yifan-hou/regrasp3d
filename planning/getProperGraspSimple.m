@@ -25,9 +25,9 @@ else
     R = [v u w];
     qg = mat2quat(R);
     
-    % check:
-    qgz = quatOnVec([0 0 1]', qg);
-    assert(qgz(3) > 0);
+%     % check:
+%     qgz = quatOnVec([0 0 1]', qg);
+%     assert(qgz(3) > 0);
 end
 
 

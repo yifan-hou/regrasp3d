@@ -22,7 +22,7 @@ function varargout = interface(varargin)
 
 % Edit the above text to modify the response to help interface
 
-% Last Modified by GUIDE v2.5 06-Dec-2017 16:47:31
+% Last Modified by GUIDE v2.5 18-Feb-2018 22:16:13
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -101,13 +101,13 @@ load(filename);
 % -----------------------------------------------
 
 % planning parameter
-para.GRIPPER_TILT_LIMIT = 30*pi/180; % tilting angle tolerance
+para.GRIPPER_TILT_LIMIT = 60*pi/180; % tilting angle tolerance
 para.GRIPPER_Z_LIMIT    = 3; % 5 finger position limit
 para.FINGER_OPEN_SPACE  = 20; % 15mm each side. used for checking collision with table
 para.FINGER_RADIUS      = 10; % used for checking collision with table
 para.MU                 = 0.8; % friction between object and the table
-para.COM_ERR            = 2; % 2 uncertainties in COM measurement
-para.GP_ERR             = 15; % 20 uncertainties in Grasp point measurement
+para.COM_ERR            = 4; % 2 uncertainties in COM measurement
+para.GP_ERR             = 5; % 20 uncertainties in Grasp point measurement
 									  
 % optimization parameter
 para.opt_obj_N               = 20;
@@ -176,10 +176,15 @@ if get(handles.CB_auto_graspf, 'Value')
 	qgf        = [];
 end
 
+if get(handles.CB_pickplace, 'Value')
+	method = 'pickplace';
+else
+	method = 'pivoting';
+end
+
+
 para.printing = true;
-% method = 'pickplace';
-method = 'pivoting';
-% load debug
+
 [path_found, plan] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f, method);
 
 
@@ -319,7 +324,7 @@ else
 	gp2o_w             = grasps.points(:, grasp_id, 2);
 	gp10_w             = quatOnVec(gp1o_w, q0);
 	gp20_w             = quatOnVec(gp2o_w, q0);
-	gripper_cone_width = getTiltedGripperCone(grasp_id, q0, para.GRIPPER_TILT_LIMIT);
+	gripper_cone_width = getTiltedGripperCone(gp10_w, gp20_w, para.GRIPPER_TILT_LIMIT);
 	qg0                = getProperGrasp(grasp_id, q0, gripper_cone_width, false);
 	
 	plotObject(mesh, handles.AX_initial, q0);
@@ -359,7 +364,7 @@ else
 	gp2o_w             = grasps.points(:, grasp_id, 2);
 	gp1f_w             = quatOnVec(gp1o_w, qf);
 	gp2f_w             = quatOnVec(gp2o_w, qf);
-	gripper_cone_width = getTiltedGripperCone(grasp_id, qf, para.GRIPPER_TILT_LIMIT);
+	gripper_cone_width = getTiltedGripperCone(gp1f_w, gp2f_w, para.GRIPPER_TILT_LIMIT);
 	qgf                = getProperGrasp(grasp_id, qf, gripper_cone_width, false);
 
 	plotObject(mesh, handles.AX_final, qf);
@@ -417,7 +422,7 @@ clc;
 global para fgraph pgraph mesh gripper grasps % inputs
 
 para.printing = false;
-finger_open_range = [5 10 15 20 25 30 35 40 45];
+finger_open_range = [5 8 10 11 12 13 14 17];
 Nexp = length(finger_open_range);
 
 % ------------------------------------------
@@ -501,7 +506,7 @@ function [] = BTN_show_results_Callback(hObject, eventdata, handles)
 % hObject    handle to BTN_show_results (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-load 'comparison1.mat'
+load '../results/comparison1.mat'
 clc;
 
 Nexp = length(finger_open_range);
@@ -511,8 +516,14 @@ N_pickplace_found =  zeros(Nexp, 1);
 for i = 1:Nexp
 	N_pivoting_found(i)  = sum(pivoting.path_found{i});
 	N_pickplace_found(i) = sum(pickplace.path_found{i});
-	disp(['Finger open dist: ' num2str(finger_open_range(i)) ', NFound: ' num2str(N_pivoting_found) '	' num2str(N_pickplace_found)] );
+	disp(['Finger open dist: ' num2str(finger_open_range(i)) ', NFound: ' num2str(N_pivoting_found(i)) '	' num2str(N_pickplace_found(i))] );
 end
+
+figure(1);clf(1);hold on;
+title('# of solutions');
+plot(finger_open_range, N_pivoting_found,'*-b');
+plot(finger_open_range, N_pickplace_found,'*-r');
+xlabel('finger width (mm)');
 
 % pivoting_ex_time      = zeros(1, N);
 % pivoting_rotation     = zeros(1, N);
@@ -667,3 +678,12 @@ global path_found plan
 if path_found
 	generateRobotTraj(plan);
 end
+
+
+% --- Executes on button press in CB_pickplace.
+function CB_pickplace_Callback(hObject, eventdata, handles)
+% hObject    handle to CB_pickplace (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of CB_pickplace

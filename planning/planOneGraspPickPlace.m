@@ -23,8 +23,8 @@ gp2f_w = quatOnVec(gp2o_w, qf);
 % 	Pick initial & final grasps
 % 	Calculate gripper_cone_width for q0 and qf
 % ----------------------------------------
-gripper_cone_width0 = getTiltedGripperCone(grasp_id, q0, para.GRIPPER_TILT_LIMIT);
-gripper_cone_widthf = getTiltedGripperCone(grasp_id, qf, para.GRIPPER_TILT_LIMIT);
+gripper_cone_width0 = getTiltedGripperCone(gp10_w, gp20_w, para.GRIPPER_TILT_LIMIT);
+gripper_cone_widthf = getTiltedGripperCone(gp1f_w, gp2f_w, para.GRIPPER_TILT_LIMIT);
 if isempty(gripper_cone_width0)
     flag = -3;
 	return;
