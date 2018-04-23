@@ -264,20 +264,20 @@ for g = 1:Ng
 		gpz{g}(fr) = gp_fr(3);
 		
 		if fr > 1
-		    % if gpz(fr) < gpz(fr-1)
-		        % going down
-				[~, cpid] = min(points_fr(3, :)); % < 2*ps_err + 1e-4;
-				cp        = points_fr(:, cpid);
-				gp_cp     = gp_fr - cp;
-
-				cones     = atan2(norm(gp_cp(1:2)), abs(gp_cp(3)));
-		        if cones < CONE
-					stuck{g}(fr)           = true;
-					cp_old                 = points_fr_old(:, cpid);
-					gp_cp_old              = gp_fr_old - cp_old;
-					gpxy_delta{g}(:, fr-1) = gp_cp(1:2) - gp_cp_old(1:2);
-		        end
-			% end
+            if (rtype{g}(fr)==1) && (gpz{g}(fr) < gpz{g}(fr-1))
+                % Pivoting, going down
+                [~, cpid] = min(points_fr(3, :)); % < 2*ps_err + 1e-4;
+                cp        = points_fr(:, cpid);
+                gp_cp     = gp_fr - cp;
+                
+                cones     = atan2(norm(gp_cp(1:2)), abs(gp_cp(3)));
+                if cones < CONE
+                    stuck{g}(fr)           = true;
+                    cp_old                 = points_fr_old(:, cpid);
+                    gp_cp_old              = gp_fr_old - cp_old;
+                    gpxy_delta{g}(:, fr-1) = gp_cp(1:2) - gp_cp_old(1:2);
+                end
+            end
 		else
 			gp0{g} = gp_fr;
 		end

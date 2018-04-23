@@ -20,7 +20,7 @@ para.minimal_support_polygon_area = 200; % mm^2
 % Grasp sampling
 para.NGS                   = 100; % maximum number of grasp pos samplings
 para.N_RESAMPLE            = 5;   % if a sequence of N samples are all close to previous grasps, then stop 
-para.ANGLE_TOL             = 1*pi/180; % rad  % grasp axis tolerance
+para.ANGLE_TOL             = 3*pi/180; % rad  % grasp axis tolerance
 para.COM_DIST_LIMIT        = 10; % minimum distance between grasp axis and COM
 para.GRASP_DIST_LIMIT      = 5; % minimum distance to other grasps
 para.POINTJ_SAMPLE_DENSITY = 0.03; % # of points per mm^2
@@ -54,13 +54,14 @@ file_dir = dir('../model/test_objects/*.stl');
 % 	   ]';
 COM = [0 -9.65 0; % big screw
        -3 0.3 36; % bar clamp
+       -4.5 0.45 54; % bar clamp 105
 	   0.2 -3 37.5; % e stop holder
 	   0 2.8 39.6; % nozzle
 	   -0.3 4.6 39 % part1
 	   ]';
 
 
-for i = 5:length(file_dir)
+for i = 3:length(file_dir)
 	% 
 	% get file name
 	% 
@@ -72,10 +73,10 @@ for i = 5:length(file_dir)
     % 
     % load the stl file
     % 
-	% Read object stl file
+% 	% Read object stl file
 % 	[fgraph, pgraph, mesh, mesh_s] = getObject(para, COM(:, i), filename);
 %     save(temp_file_path, 'fgraph', 'pgraph', 'mesh', 'mesh_s');
-	% % or, load existed object files
+	% or, load existed object files
 	load(temp_file_path); 
 
 	% 

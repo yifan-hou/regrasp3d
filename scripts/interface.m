@@ -22,7 +22,7 @@ function varargout = interface(varargin)
 
 % Edit the above text to modify the response to help interface
 
-% Last Modified by GUIDE v2.5 18-Feb-2018 22:16:13
+% Last Modified by GUIDE v2.5 22-Apr-2018 11:08:32
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -152,6 +152,7 @@ disp('[Load Model] Model is loaded.');
 set(handles.BTN_plan, 'Enable', 'on');
 set(handles.BTN_compare, 'Enable', 'on');
 set(handles.BTN_compare2, 'Enable', 'on');
+set(handles.BTN_ReadInitialPose, 'Enable', 'on');
 set(handles.BTN_rand_initial, 'Enable', 'on');
 set(handles.BTN_rand_final, 'Enable', 'on');
 
@@ -687,3 +688,15 @@ function CB_pickplace_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of CB_pickplace
+
+
+% --- Executes on button press in BTN_ReadInitialPose.
+function BTN_ReadInitialPose_Callback(hObject, eventdata, handles)
+% hObject    handle to BTN_ReadInitialPose (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global mesh q0
+
+pose = dlmread('initial_pose.txt');
+q0 = pose(4:7)';
+plotObject(mesh, handles.AX_initial, q0);

@@ -37,7 +37,6 @@ max_diff_q = Velocity_q/Rate;
 
 N           = length(plan);
 plan_smooth = cell(N,1);
-assert(N == 1); % for testing only
 for p = 1:N
 	temp_rtype      = [];
 	temp_stuck      = [];
@@ -90,17 +89,21 @@ end
 % --------------------------------------
 % 	Begin Writting to file
 % --------------------------------------
-f_N           = fopen('../results/N.txt','w');
-f_rtype       = fopen('../results/rtype.txt','w');
-f_stuck       = fopen('../results/stuck.txt','w');
-f_qgrp        = fopen('../results/qgrp.txt','w');
-f_grp0        = fopen('../results/grp0.txt','w');
-f_grpz        = fopen('../results/grpz.txt','w');
-f_grpxy_delta = fopen('../results/grpxy_delta.txt','w');
-
 N = length(plan_smooth);
-assert(N == 1); % for testing only
+rmdir('../results/traj*','s');
+for i=1:N
+	mkdir(['../results/traj' num2str(i)]);
+end
+
+
 for p = 1:N
+	f_N           = fopen(['../results/traj' num2str(p) '/N.txt'],'w');
+	f_rtype       = fopen(['../results/traj' num2str(p) '/rtype.txt'],'w');
+	f_stuck       = fopen(['../results/traj' num2str(p) '/stuck.txt'],'w');
+	f_qgrp        = fopen(['../results/traj' num2str(p) '/qgrp.txt'],'w');
+	f_grp0        = fopen(['../results/traj' num2str(p) '/grp0.txt'],'w');
+	f_grpz        = fopen(['../results/traj' num2str(p) '/grpz.txt'],'w');
+	f_grpxy_delta = fopen(['../results/traj' num2str(p) '/grpxy_delta.txt'],'w');
 	for fr = 1:plan_smooth{p}.N
 		% read
 		rtype      = plan_smooth{p}.rtype(fr);
@@ -140,14 +143,15 @@ for p = 1:N
 	gp0 = plan{p}.gp0 + trans_p2r;
 	fprintf(f_N, '%d\n', plan_smooth{p}.N);
 	fprintf(f_grp0, '%f\t%f\t%f\n', gp0(1), gp0(2), gp0(3));
+	
+	fclose(f_N);
+	fclose(f_rtype);
+	fclose(f_stuck);
+	fclose(f_qgrp);
+	fclose(f_grp0);
+	fclose(f_grpz);
+	fclose(f_grpxy_delta);
 end
-fclose(f_N);
-fclose(f_rtype);
-fclose(f_stuck);
-fclose(f_qgrp);
-fclose(f_grp0);
-fclose(f_grpz);
-fclose(f_grpxy_delta);
 
 disp('Trajectory is written to file.');
 end
