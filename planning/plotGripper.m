@@ -13,8 +13,6 @@ end
 
 hold on;
 
-gp    = reshape(gp,[3 2]);
-% gp_q  = quatOnVec(gp, q);
 gp_q  = gp;
 
 % move gripper mesh

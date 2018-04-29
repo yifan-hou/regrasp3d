@@ -7,7 +7,7 @@ clc;
 % --------------------------------------
 % 	Robot coordinate frames
 % --------------------------------------
-trans_p2r  = [234.51 -347.26 5]';
+trans_p2r  = para.scene_offset;
 compensate = 180-22.5;
 Velocity_p = 100; % mm/s
 Velocity_q = 15*pi/180; % mm/s

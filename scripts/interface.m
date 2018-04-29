@@ -121,7 +121,7 @@ para.showCheckedGrasp_id  = 1;
 para.showGraspChecking    = false;
 para.showGraspChecking_id = [2 3];
 para.printing 			  = true; % control any printing outside of 'interface.m'
-para.scene_offset         = [72 312 134.5]; % [0 0 0] in planning will be this point in the scene
+para.scene_offset         = [72 312 134.5]'; % [0 0 0] in planning will be this point in the scene
 
 % visualize all the checked grasps
 if para.showCheckedGrasp
@@ -720,8 +720,9 @@ global mesh q0
 
 call(read_obj_pose_client);
 
-pose = dlmread('initial_pose.txt');
-q0 = pose(4:7)';
+pose              = dlmread('initial_pose.txt');
+para.scene_offset = pose(1:3);
+q0                = pose;
 plotObject(mesh, handles.AX_initial, q0);
 
 

@@ -13,12 +13,11 @@ gp2o_w = grasps.points(:, plan{1}.grasp_id, 2);
 % object states
 q0       = plan{1}.qobj(:,1);
 m0_o     = quat2m(q0);
-points_w = m0_o*(mesh.vertices');
-% offset   = min(points_w(3,:));
-com_w    = m0_o*mesh.COM;
-gp1      = m0_o*gp1o_w;
-gp2      = m0_o*gp2o_w;
 
+points_w = bsxfun(@plus, m0_o*(mesh.vertices'), para.scene_offset);
+com_w    = m0_o*mesh.COM + para.scene_offset;
+gp1      = m0_o*gp1o_w + para.scene_offset;
+gp2      = m0_o*gp2o_w + para.scene_offset;
 
 if isnumeric(fidOrhandle)
 	figure(fidOrhandle);
@@ -132,6 +131,7 @@ for p = 1:N
 		ps   = Robj*(mesh.vertices');
 		gp1  = Robj*gp1o_w;
 		gp2  = Robj*gp2o_w;
+
 		gp   = (gp1 + gp2)/2;
 
 		offset      = [gp(1) gp(2) min(ps(3,:))]';
@@ -143,6 +143,12 @@ for p = 1:N
 
 		cpid = ps_(3,:) < 1e-5;
 		cp_  = ps_(:,cpid);
+
+		% scene offset
+		ps_         = bsxfun(@plus, ps_, para.scene_offset);
+		com_        = com_ + para.scene_offset;
+		gp1_        = gp1_ + para.scene_offset;
+		gp2_        = gp2_ + para.scene_offset;
 
 		aobj.x = arrowLength*quatOnVec([1 0 0]', qobj);
 		aobj.y = arrowLength*quatOnVec([0 1 0]', qobj);

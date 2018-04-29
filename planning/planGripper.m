@@ -125,4 +125,9 @@ plan.gp0        = obj_plan.gp0;
 plan.gpz        = obj_plan.gpz;
 plan.gpxy_delta = obj_plan.gpxy_delta;
 
+% % offset for the actual scene
+% plan.gp0 = plan.gp0 + para.scene_offset;
+% plan.gpz = plan.gpz + para.scene_offset[3];
+
+
 flag = 1;

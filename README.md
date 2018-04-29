@@ -7,6 +7,11 @@ It is recorded incrementally in grpxy_delta.
 During sticking in pivoting, the object rotates about contact point.
 Otherwise, grpxy_delta is set to zero.
 
+# Handle translational offset
+In all planning, translational offset is ignored (i.e. the object start from x=0, y=0, on a table with z=0)
+In ploting and generateTraj, offset is considered.
+
+
 # Online execution
 ## Orientation
 move according to plan. (pos)
@@ -22,3 +27,4 @@ Pivoting:
 	(about to) Slipping: 
 		xy: force, towards the origin. (not implemented yet)
 		z: position, move according to plan
+
