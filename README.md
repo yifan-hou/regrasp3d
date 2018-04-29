@@ -20,5 +20,5 @@ Pivoting:
 		xy: position, follow the plan, rotate about axis
 		z: 0 force, or press down
 	(about to) Slipping: 
-		xy: force, towards the origin. 
-		z: move according to plan
+		xy: force, towards the origin. (not implemented yet)
+		z: position, move according to plan

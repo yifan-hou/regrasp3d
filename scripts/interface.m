@@ -22,7 +22,7 @@ function varargout = interface(varargin)
 
 % Edit the above text to modify the response to help interface
 
-% Last Modified by GUIDE v2.5 22-Apr-2018 11:08:32
+% Last Modified by GUIDE v2.5 28-Apr-2018 21:16:03
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -121,7 +121,7 @@ para.showCheckedGrasp_id  = 1;
 para.showGraspChecking    = false;
 para.showGraspChecking_id = [2 3];
 para.printing 			  = true; % control any printing outside of 'interface.m'
-
+para.scene_offset         = [72 312 134.5]; % [0 0 0] in planning will be this point in the scene
 
 % visualize all the checked grasps
 if para.showCheckedGrasp
@@ -700,3 +700,72 @@ global mesh q0
 pose = dlmread('initial_pose.txt');
 q0 = pose(4:7)';
 plotObject(mesh, handles.AX_initial, q0);
+
+
+% --- Executes on button press in BTN_EXP_Reset.
+function BTN_EXP_Reset_Callback(hObject, eventdata, handles)
+% hObject    handle to BTN_EXP_Reset (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global reset_client
+call(reset_client);
+
+% --- Executes on button press in BTN_EXP_read_obj_pose.
+function BTN_EXP_read_obj_pose_Callback(hObject, eventdata, handles)
+% hObject    handle to BTN_EXP_read_obj_pose (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global read_obj_pose_client
+global mesh q0
+
+call(read_obj_pose_client);
+
+pose = dlmread('initial_pose.txt');
+q0 = pose(4:7)';
+plotObject(mesh, handles.AX_initial, q0);
+
+
+% --- Executes on button press in BTN_EXP_Planning.
+function BTN_EXP_Planning_Callback(hObject, eventdata, handles)
+% hObject    handle to BTN_EXP_Planning (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes on button press in BTN_EXP_Pre_Grasp.
+function BTN_EXP_Pre_Grasp_Callback(hObject, eventdata, handles)
+% hObject    handle to BTN_EXP_Pre_Grasp (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global pre_grasp_client
+
+
+% --- Executes on button press in BTN_EXP_Run.
+function BTN_EXP_Run_Callback(hObject, eventdata, handles)
+% hObject    handle to BTN_EXP_Run (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global run_client
+
+
+% --- Executes on button press in BTN_EXP_Release_Reset.
+function BTN_EXP_Release_Reset_Callback(hObject, eventdata, handles)
+% hObject    handle to BTN_EXP_Release_Reset (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global release_reset_client
+
+
+% --- Executes on button press in BTN_EXP_Init_ROS.
+function BTN_EXP_Init_ROS_Callback(hObject, eventdata, handles)
+% hObject    handle to BTN_EXP_Init_ROS (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global reset_client read_obj_pose_client pre_grasp_client run_client release_reset_client
+rosinit;
+
+reset_client         = rossvcclient('/regrasping/reset');
+read_obj_pose_client = rossvcclient('/regrasping/read_obj_pose');
+pre_grasp_client     = rossvcclient('/regrasping/pre_grasp');
+run_client           = rossvcclient('/regrasping/run');
+release_reset_client = rossvcclient('/regrasping/release_reset');

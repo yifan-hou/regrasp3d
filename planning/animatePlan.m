@@ -45,15 +45,15 @@ handles_object.com     = plot3(com_w(1), com_w(2), com_w(3), 'r*', 'markersize',
 
 % table
 table.vertices      = zeros(3,8);
-table.vertices(:,1) = [-1 -1 0]';
-table.vertices(:,2) = [1  -1 0]';
-table.vertices(:,3) = [1  -1 -0.1]';
-table.vertices(:,4) = [-1 -1 -0.1]';
-table.vertices(:,5) = [1   1 0]';
-table.vertices(:,6) = [-1  1 0]';
-table.vertices(:,7) = [-1  1 -0.1]';
-table.vertices(:,8) = [1   1 -0.1]';
-table.vertices      = 80*(table.vertices)';
+table.vertices(:,1) = [-70 285 134.5]';
+table.vertices(:,2) = [215  285 134.5]';
+table.vertices(:,3) = [215  285 0]';
+table.vertices(:,4) = [-70 285 0]';
+table.vertices(:,5) = [215   540 134.5]';
+table.vertices(:,6) = [-70  540 134.5]';
+table.vertices(:,7) = [-70  540 0]';
+table.vertices(:,8) = [215   540 0]';
+table.vertices      = (table.vertices)';
 table.faces = [1 4 3;
 	   1 2 3;
 	   6 1 2;
@@ -74,8 +74,8 @@ patch('Faces', table.faces, ...
 			      'AmbientStrength', 0.15);
 
 xlabel('X'); ylabel('Y'); zlabel('Z');
-axis(100*[-1 1 -1 1 0 2]);
-view(-43, 27);
+axis([-70 215 285 540 0 500]);
+view(166, 22);
 axis off
 
 % draw coordinate system for object

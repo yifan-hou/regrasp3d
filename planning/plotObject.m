@@ -1,4 +1,6 @@
 function handles = plotObject(mesh, fidOrhandle, q, handles)
+global para
+
 if nargin <= 2
 	q = [1 0 0 0]';
 end
@@ -7,8 +9,15 @@ if nargin <= 1
 	fidOrhandle = 1;
 end
 
-m = quat2m(q);
-vertices = m*(mesh.vertices');
+if (length(q) == 4)
+	m = quat2m(q);
+	T = para.scene_offset;
+elseif (length(q) == 7)
+	m = quat2m(q(4:7));
+	T = q(1:3);
+end
+
+vertices = bsxfun(@plus, m*(mesh.vertices'), T);
 
 if ~isempty(fidOrhandle)
 	if isnumeric(fidOrhandle)
@@ -41,6 +50,6 @@ material('SHINY');
 xlabel('X'); ylabel('Y'); zlabel('Z');
 
 axis equal;
-view(-43, 27);
+view(166, 22);
 
 end
