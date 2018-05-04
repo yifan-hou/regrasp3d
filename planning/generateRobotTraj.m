@@ -1,9 +1,9 @@
 % gp: grasp points in world frame
 % q: 4x1
 function [] = generateRobotTraj(plan)
-% global mesh 
+global para
 
-clc;
+% clc;
 % --------------------------------------
 % 	Robot coordinate frames
 % --------------------------------------
@@ -37,7 +37,7 @@ max_diff_q = Velocity_q/Rate;
 
 N           = length(plan);
 plan_smooth = cell(N,1);
-for p = 1:N
+for p = 1:1 % only generating the first part of the trajectory
 	temp_rtype      = [];
 	temp_stuck      = [];
 	temp_qgp        = [];
@@ -90,20 +90,15 @@ end
 % 	Begin Writting to file
 % --------------------------------------
 N = length(plan_smooth);
-rmdir('../results/traj*','s');
-for i=1:N
-	mkdir(['../results/traj' num2str(i)]);
-end
 
-
-for p = 1:N
-	f_N           = fopen(['../results/traj' num2str(p) '/N.txt'],'w');
-	f_rtype       = fopen(['../results/traj' num2str(p) '/rtype.txt'],'w');
-	f_stuck       = fopen(['../results/traj' num2str(p) '/stuck.txt'],'w');
-	f_qgrp        = fopen(['../results/traj' num2str(p) '/qgrp.txt'],'w');
-	f_grp0        = fopen(['../results/traj' num2str(p) '/grp0.txt'],'w');
-	f_grpz        = fopen(['../results/traj' num2str(p) '/grpz.txt'],'w');
-	f_grpxy_delta = fopen(['../results/traj' num2str(p) '/grpxy_delta.txt'],'w');
+f_N           = fopen(['../results/N.txt'],'w');
+f_rtype       = fopen(['../results/rtype.txt'],'w');
+f_stuck       = fopen(['../results/stuck.txt'],'w');
+f_qgrp        = fopen(['../results/qgrp.txt'],'w');
+f_grp0        = fopen(['../results/grp0.txt'],'w');
+f_grpz        = fopen(['../results/grpz.txt'],'w');
+f_grpxy_delta = fopen(['../results/grpxy_delta.txt'],'w');
+for p = 1:1
 	for fr = 1:plan_smooth{p}.N
 		% read
 		rtype      = plan_smooth{p}.rtype(fr);

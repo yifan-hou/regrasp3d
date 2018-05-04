@@ -9,15 +9,13 @@ if nargin <= 1
 	fidOrhandle = 1;
 end
 
-if (length(q) == 4)
-	m = quat2m(q);
-	T = para.scene_offset;
-elseif (length(q) == 7)
-	m = quat2m(q(4:7));
-	T = q(1:3);
-end
+m = quat2m(q);
+T = para.scene_offset;
 
-vertices = bsxfun(@plus, m*(mesh.vertices'), T);
+vertices      = m*(mesh.vertices');
+minz          = min(vertices(3,:));
+vertices(3,:) = vertices(3,:) - minz;
+vertices      = bsxfun(@plus, vertices, T);
 
 if ~isempty(fidOrhandle)
 	if isnumeric(fidOrhandle)

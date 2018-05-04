@@ -59,8 +59,8 @@ while true
 		dispC('[Planning] No solution found given the available grasps.');
 		break;
 	end
-	if NP > 3
-		dispC('[Planning] No solution within 2 regrasps found given the available grasps.');
+	if NP > 4
+		dispC('[Planning] No solution within 3 regrasps found given the available grasps.');
 		break;
 	end
 	

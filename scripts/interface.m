@@ -70,6 +70,7 @@ addpath ../offline
 addpath ../optimization
 addpath ../optimization/autodiff_generated
 addpath ../planning
+addpath ../ploting
 addpath ../snopt
 
 clc
@@ -101,13 +102,13 @@ load(filename);
 % -----------------------------------------------
 
 % planning parameter
-para.GRIPPER_TILT_LIMIT = 60*pi/180; % tilting angle tolerance
+para.GRIPPER_TILT_LIMIT = 40*pi/180; % tilting angle tolerance
 para.GRIPPER_Z_LIMIT    = 3; % 5 finger position limit
 para.FINGER_OPEN_SPACE  = 20; % 15mm each side. used for checking collision with table
 para.FINGER_RADIUS      = 10; % used for checking collision with table
-para.MU                 = 0.8; % friction between object and the table
-para.COM_ERR            = 4; % 2 uncertainties in COM measurement
-para.GP_ERR             = 5; % 20 uncertainties in Grasp point measurement
+para.MU                 = 0.1; % friction between object and the table
+para.COM_ERR            = 10; % 2 uncertainties in COM measurement
+para.GP_ERR             = 12; % 20 uncertainties in Grasp point measurement
 									  
 % optimization parameter
 para.opt_obj_N               = 20;
@@ -116,12 +117,12 @@ para.opt_obj_cost_k_dq       = 2;
 para.opt_obj_cost_k_tilt     = 1;
 
 % ploting control
-para.showCheckedGrasp     = true;
+para.showCheckedGrasp     = false;
 para.showCheckedGrasp_id  = 1;
 para.showGraspChecking    = false;
 para.showGraspChecking_id = [2 3];
 para.printing 			  = true; % control any printing outside of 'interface.m'
-para.scene_offset         = [72 312 134.5]'; % [0 0 0] in planning will be this point in the scene
+para.scene_offset         = [72 312 250]'; % [0 0 0] in planning will be this point in the scene
 
 % visualize all the checked grasps
 if para.showCheckedGrasp
@@ -708,30 +709,95 @@ function BTN_EXP_Reset_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 global reset_client
+disp('Calling Reset_service:');
 call(reset_client);
+disp('Reset is done.');
 
 % --- Executes on button press in BTN_EXP_read_obj_pose.
 function BTN_EXP_read_obj_pose_Callback(hObject, eventdata, handles)
 % hObject    handle to BTN_EXP_read_obj_pose (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-global read_obj_pose_client
+global read_obj_pose_client para
 global mesh q0
 
+disp('Calling read_obj_pose service:');
 call(read_obj_pose_client);
 
-pose              = dlmread('initial_pose.txt');
-para.scene_offset = pose(1:3);
-q0                = pose;
-plotObject(mesh, handles.AX_initial, q0);
+pose = dlmread('initial_pose.txt');
+q0   = reshape(pose(4:7), [4,1]);
+pt0  = quat2m(q0)*(mesh.vertices');
+z0   = min(pt0(3,:));
+para.scene_offset = 1000*pose(1:3)';
+para.scene_offset(3) = para.scene_offset(3) + z0;
 
+
+plotObject(mesh, handles.AX_initial, q0);
+plotTable(handles.AX_initial);
+% plotObject(mesh, 1, q0);
+% plotTable(1);
+
+set(handles.BTN_EXP_Planning, 'Enable', 'on');
+set(handles.BTN_EXP_Pre_Grasp, 'Enable', 'off');
+set(handles.BTN_EXP_Run, 'Enable', 'off');
+set(handles.BTN_EXP_Release_Reset, 'Enable', 'off');
+
+disp('Read obj pose is done.');
 
 % --- Executes on button press in BTN_EXP_Planning.
 function BTN_EXP_Planning_Callback(hObject, eventdata, handles)
 % hObject    handle to BTN_EXP_Planning (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+clc;
+global para fgraph pgraph mesh gripper grasps q0 qf qg0 qgf% inputs
+global path_found plan % outputs
+global grasp_id_0 grasp_id_f
 
+% -------------------------------------------------------
+% 		Planning
+% -------------------------------------------------------
+
+disp('[Planning] Planning begin.');
+% get grasp points/grasp angles for initial and final pose
+if get(handles.CB_auto_grasp0, 'Value')
+	grasp_id_0 = [];
+	qg0        = [];
+end
+
+if get(handles.CB_auto_graspf, 'Value')
+	grasp_id_f = [];
+	qgf        = [];
+end
+
+if get(handles.CB_pickplace, 'Value')
+	method = 'pickplace';
+else
+	method = 'pivoting';
+end
+
+
+para.printing = true;
+
+[path_found, plan] = solveAProblem(q0, qf, qg0, qgf, grasp_id_0, grasp_id_f, method);
+
+
+if path_found
+	set(handles.BTN_animate, 'Enable', 'on');
+    set(handles.BTN_EXP_Pre_Grasp, 'Enable', 'on');
+else
+	set(handles.BTN_animate, 'Enable', 'off');
+    set(handles.BTN_EXP_Pre_Grasp, 'Enable', 'off');
+    return;
+end
+
+% -------------------------------------------------------
+% 		Generate files
+% -------------------------------------------------------
+disp('Generating files:');
+generateRobotTraj(plan);
+
+disp('Planning is done.')
 
 % --- Executes on button press in BTN_EXP_Pre_Grasp.
 function BTN_EXP_Pre_Grasp_Callback(hObject, eventdata, handles)
@@ -739,7 +805,18 @@ function BTN_EXP_Pre_Grasp_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 global pre_grasp_client
+disp('Calling Pre_grasp_service:');
+call(pre_grasp_client);
 
+set(handles.BTN_EXP_Init_ROS, 'Enable', 'off');
+set(handles.BTN_EXP_Reset, 'Enable', 'off');
+set(handles.BTN_EXP_read_obj_pose, 'Enable', 'off');
+set(handles.BTN_EXP_Planning, 'Enable', 'off');
+set(handles.BTN_EXP_Pre_Grasp, 'Enable', 'off');
+set(handles.BTN_EXP_Run, 'Enable', 'on');
+set(handles.BTN_EXP_Release_Reset, 'Enable', 'on');
+
+disp('Pre Grasp is done.');
 
 % --- Executes on button press in BTN_EXP_Run.
 function BTN_EXP_Run_Callback(hObject, eventdata, handles)
@@ -747,7 +824,18 @@ function BTN_EXP_Run_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 global run_client
+disp('Calling Run_service:');
+call(run_client);
 
+set(handles.BTN_EXP_Init_ROS, 'Enable', 'off');
+set(handles.BTN_EXP_Reset, 'Enable', 'off');
+set(handles.BTN_EXP_read_obj_pose, 'Enable', 'off');
+set(handles.BTN_EXP_Planning, 'Enable', 'off');
+set(handles.BTN_EXP_Pre_Grasp, 'Enable', 'off');
+set(handles.BTN_EXP_Run, 'Enable', 'off');
+set(handles.BTN_EXP_Release_Reset, 'Enable', 'on');
+
+disp('Run is done.');
 
 % --- Executes on button press in BTN_EXP_Release_Reset.
 function BTN_EXP_Release_Reset_Callback(hObject, eventdata, handles)
@@ -755,7 +843,17 @@ function BTN_EXP_Release_Reset_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 global release_reset_client
+call(release_reset_client);
 
+set(handles.BTN_EXP_Init_ROS, 'Enable', 'off');
+set(handles.BTN_EXP_Reset, 'Enable', 'on');
+set(handles.BTN_EXP_read_obj_pose, 'Enable', 'on');
+set(handles.BTN_EXP_Planning, 'Enable', 'off');
+set(handles.BTN_EXP_Pre_Grasp, 'Enable', 'off');
+set(handles.BTN_EXP_Run, 'Enable', 'off');
+set(handles.BTN_EXP_Release_Reset, 'Enable', 'off');
+
+disp('Release_reset is done.');
 
 % --- Executes on button press in BTN_EXP_Init_ROS.
 function BTN_EXP_Init_ROS_Callback(hObject, eventdata, handles)
@@ -763,10 +861,20 @@ function BTN_EXP_Init_ROS_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 global reset_client read_obj_pose_client pre_grasp_client run_client release_reset_client
-rosinit;
+% rosinit;
 
 reset_client         = rossvcclient('/regrasping/reset');
 read_obj_pose_client = rossvcclient('/regrasping/read_obj_pose');
 pre_grasp_client     = rossvcclient('/regrasping/pre_grasp');
 run_client           = rossvcclient('/regrasping/run');
 release_reset_client = rossvcclient('/regrasping/release_reset');
+
+set(handles.BTN_EXP_Init_ROS, 'Enable', 'off');
+set(handles.BTN_EXP_Reset, 'Enable', 'on');
+set(handles.BTN_EXP_read_obj_pose, 'Enable', 'on');
+set(handles.BTN_EXP_Planning, 'Enable', 'off');
+set(handles.BTN_EXP_Pre_Grasp, 'Enable', 'off');
+set(handles.BTN_EXP_Run, 'Enable', 'off');
+set(handles.BTN_EXP_Release_Reset, 'Enable', 'off');
+
+disp('Initialization is done. Service clients are ready to use.');

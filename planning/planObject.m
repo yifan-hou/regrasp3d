@@ -73,6 +73,7 @@ for g = 1:Ng
 	gp1f_bottom = gp1f + gpf_x*para.FINGER_OPEN_SPACE - gpf_z*para.FINGER_RADIUS;
 	gp2f_bottom = gp2f - gpf_x*para.FINGER_OPEN_SPACE - gpf_z*para.FINGER_RADIUS;
 
+    disp([gp10_bottom(3)-tablez0 gp20_bottom(3)-tablez0 gp1f_bottom(3)-tablezf gp2f_bottom(3)-tablezf]);
 	if any([gp10_bottom(3)-tablez0 gp20_bottom(3)-tablez0 gp1f_bottom(3)-tablezf gp2f_bottom(3)-tablezf]< para.GRIPPER_Z_LIMIT)
 		grasps_flag(g) = -1;
 		continue;

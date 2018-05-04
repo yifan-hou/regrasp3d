@@ -1,7 +1,7 @@
 % gp: grasp points in world frame
 % q: 4x1
 function [] = animatePlan(fidOrhandle, plan)
-global mesh gripper grasps
+global mesh gripper grasps para
 
 
 
@@ -13,11 +13,16 @@ gp2o_w = grasps.points(:, plan{1}.grasp_id, 2);
 % object states
 q0       = plan{1}.qobj(:,1);
 m0_o     = quat2m(q0);
+vertices = m0_o*(mesh.vertices');
 
-points_w = bsxfun(@plus, m0_o*(mesh.vertices'), para.scene_offset);
-com_w    = m0_o*mesh.COM + para.scene_offset;
-gp1      = m0_o*gp1o_w + para.scene_offset;
-gp2      = m0_o*gp2o_w + para.scene_offset;
+z0 = min(vertices(3,:));
+offset = para.scene_offset;
+offset(3) = offset(3) - z0;
+
+points_w = bsxfun(@plus, vertices, offset);
+com_w    = m0_o*mesh.COM + offset;
+gp1      = m0_o*gp1o_w + offset;
+gp2      = m0_o*gp2o_w + offset;
 
 if isnumeric(fidOrhandle)
 	figure(fidOrhandle);
@@ -42,45 +47,12 @@ handles_object.cp      = plot3(cp_w(1,:), cp_w(2,:), cp_w(3,:), '.k', 'markersiz
 handles_object.com     = plot3(com_w(1), com_w(2), com_w(3), 'r*', 'markersize', 8);
 % handles_object.gravity = plot3(com_w(1)+[0 0], com_w(2)+[0 0], com_w(3)+[0 -0.4], 'r-', 'linewidth', 2);
 
-% table
-table.vertices      = zeros(3,8);
-table.vertices(:,1) = [-70 285 134.5]';
-table.vertices(:,2) = [215  285 134.5]';
-table.vertices(:,3) = [215  285 0]';
-table.vertices(:,4) = [-70 285 0]';
-table.vertices(:,5) = [215   540 134.5]';
-table.vertices(:,6) = [-70  540 134.5]';
-table.vertices(:,7) = [-70  540 0]';
-table.vertices(:,8) = [215   540 0]';
-table.vertices      = (table.vertices)';
-table.faces = [1 4 3;
-	   1 2 3;
-	   6 1 2;
-	   6 2 5;
-	   6 8 5;
-	   6 8 7;
-	   3 7 4;
-	   3 7 8;
-	   1 7 6;
-	   1 7 4;
-	   2 8 5;
-	   2 8 3];
-patch('Faces', table.faces, ...
-				  'Vertices', table.vertices, ...
-				  'FaceColor',       [0.6 0.8 0.4], ...
-			      'EdgeColor',       'none',        ...
-			      'FaceLighting',    'gouraud',     ...
-			      'AmbientStrength', 0.15);
-
-xlabel('X'); ylabel('Y'); zlabel('Z');
-axis([-70 215 285 540 0 500]);
-view(166, 22);
-axis off
+plotTable(fidOrhandle);
 
 % draw coordinate system for object
 arrowLength = 1*(max(points_w(1,:)) - min(points_w(1,:)));
-stemWidth   = 0.1*arrowLength;
-tipWidth    = 0.15*arrowLength;
+stemWidth   = 0.01*arrowLength;
+tipWidth    = 0.015*arrowLength;
 
 % xobj = arrowLength*quatOnVec([1 0 0]', q0);
 % yobj = arrowLength*quatOnVec([0 1 0]', q0);
@@ -89,13 +61,13 @@ tipWidth    = 0.15*arrowLength;
 % handles_object.arrow_y = mArrow3(com_w, com_w+yobj, 'color','g', 'stemWidth', stemWidth, 'tipWidth', tipWidth);
 % handles_object.arrow_z = mArrow3(com_w, com_w+zobj, 'color','b', 'stemWidth', stemWidth, 'tipWidth', tipWidth);
 
-gp   = [gp1 + gp2]/2;
+gp0   = (gp1 + gp2)/2;
 xgrp = arrowLength*quatOnVec([1 0 0]', plan{1}.qgrp(:,1));
 ygrp = arrowLength*quatOnVec([0 1 0]', plan{1}.qgrp(:,1));
 zgrp = arrowLength*quatOnVec([0 0 1]', plan{1}.qgrp(:,1));
-handles_gripper.arrow_x = mArrow3(gp, gp+xgrp, 'color','r', 'stemWidth', stemWidth, 'tipWidth', tipWidth);
-handles_gripper.arrow_y = mArrow3(gp, gp+ygrp, 'color','g', 'stemWidth', stemWidth, 'tipWidth', tipWidth);
-handles_gripper.arrow_z = mArrow3(gp, gp+zgrp, 'color','b', 'stemWidth', stemWidth, 'tipWidth', tipWidth);
+handles_gripper.arrow_x = mArrow3(gp0, gp0+xgrp, 'color','r', 'stemWidth', stemWidth, 'tipWidth', tipWidth);
+handles_gripper.arrow_y = mArrow3(gp0, gp0+ygrp, 'color','g', 'stemWidth', stemWidth, 'tipWidth', tipWidth);
+handles_gripper.arrow_z = mArrow3(gp0, gp0+zgrp, 'color','b', 'stemWidth', stemWidth, 'tipWidth', tipWidth);
 
 
 % --------------------------------------
@@ -108,6 +80,8 @@ for p = 1:N
 % 	offset = [0 0 0]';
 	trans  = [0 0]';
 
+    rtype = 0;
+    gp = gp0;
 	for fr = 1:plan{p}.N
 		qobj  = plan{p}.qobj(:, fr);
 		qgrp  = plan{p}.qgrp(:, fr);
@@ -132,23 +106,28 @@ for p = 1:N
 		gp1  = Robj*gp1o_w;
 		gp2  = Robj*gp2o_w;
 
-		gp   = (gp1 + gp2)/2;
+		gp_org = (gp1 + gp2)/2;
 
-		offset      = [gp(1) gp(2) min(ps(3,:))]';
-		offset(1:2) = offset(1:2) - trans;
-		ps_         = ps - offset;
-		com_        = Robj*mesh.COM - offset;
-		gp1_        = gp1 - offset;
-		gp2_        = gp2 - offset;
+		z0 = min(ps(3,:));
+        gp(1:2) = gp0(1:2) + trans;
+        gp(3) = gp_org(3) - z0 + para.scene_offset(3);
+
+        offset = gp - gp_org;
+		% translation is described in trans,
+		% so we need to get rid of xy in gp
+		ps_         = ps + offset;
+		com_        = Robj*mesh.COM + offset;
+		gp1_        = gp1 + offset;
+		gp2_        = gp2 + offset;
 
 		cpid = ps_(3,:) < 1e-5;
 		cp_  = ps_(:,cpid);
 
-		% scene offset
-		ps_         = bsxfun(@plus, ps_, para.scene_offset);
-		com_        = com_ + para.scene_offset;
-		gp1_        = gp1_ + para.scene_offset;
-		gp2_        = gp2_ + para.scene_offset;
+% 		% scene offset
+% 		ps_         = bsxfun(@plus, ps_, para.scene_offset);
+% 		com_        = com_ + para.scene_offset;
+% 		gp1_        = gp1_ + para.scene_offset;
+% 		gp2_        = gp2_ + para.scene_offset;
 
 		aobj.x = arrowLength*quatOnVec([1 0 0]', qobj);
 		aobj.y = arrowLength*quatOnVec([0 1 0]', qobj);
