@@ -1,28 +1,35 @@
 % gp: grasp points in world frame
 % q: 4x1
 function [] = animatePlan(fidOrhandle, plan)
-global mesh gripper grasps para
+global mesh gripper para % grasps
 
 
 
 % --------------------------------------
 % 	draw and get the handles
 % --------------------------------------
-gp1o_w = grasps.points(:, plan{1}.grasp_id, 1);
-gp2o_w = grasps.points(:, plan{1}.grasp_id, 2);
+% gp1o_w = grasps.points(:, plan{1}.grasp_id, 1);
+% gp2o_w = grasps.points(:, plan{1}.grasp_id, 2);
+gp1o_w = plan{1}.gp1o_w;
+gp2o_w = plan{1}.gp2o_w;
+
 % object states
 q0       = plan{1}.qobj(:,1);
 m0_o     = quat2m(q0);
-vertices = m0_o*(mesh.vertices');
 
-z0 = min(vertices(3,:));
-offset = para.scene_offset;
-offset(3) = offset(3) - z0;
+% plan offset
+gp1    = m0_o*gp1o_w;
+gp2    = m0_o*gp2o_w;
+gp     = (gp1+gp2)/2;
+offset = plan{1}.gp0 - gp;
+% scene offset
+offset    = offset + para.scene_offset;
 
-points_w = bsxfun(@plus, vertices, offset);
+points_w = bsxfun(@plus, m0_o*(mesh.vertices'), offset);
 com_w    = m0_o*mesh.COM + offset;
-gp1      = m0_o*gp1o_w + offset;
-gp2      = m0_o*gp2o_w + offset;
+gp1      = gp1 + offset;
+gp2      = gp2 + offset;
+gp0      = (gp1 + gp2)/2;
 
 if isnumeric(fidOrhandle)
 	figure(fidOrhandle);
@@ -61,7 +68,6 @@ tipWidth    = 0.015*arrowLength;
 % handles_object.arrow_y = mArrow3(com_w, com_w+yobj, 'color','g', 'stemWidth', stemWidth, 'tipWidth', tipWidth);
 % handles_object.arrow_z = mArrow3(com_w, com_w+zobj, 'color','b', 'stemWidth', stemWidth, 'tipWidth', tipWidth);
 
-gp0   = (gp1 + gp2)/2;
 xgrp = arrowLength*quatOnVec([1 0 0]', plan{1}.qgrp(:,1));
 ygrp = arrowLength*quatOnVec([0 1 0]', plan{1}.qgrp(:,1));
 zgrp = arrowLength*quatOnVec([0 0 1]', plan{1}.qgrp(:,1));
@@ -75,13 +81,14 @@ handles_gripper.arrow_z = mArrow3(gp0, gp0+zgrp, 'color','b', 'stemWidth', stemW
 % --------------------------------------
 N = length(plan);
 for p = 1:N
-	gp1o_w = grasps.points(:, plan{p}.grasp_id, 1);
-	gp2o_w = grasps.points(:, plan{p}.grasp_id, 2);
-% 	offset = [0 0 0]';
-	trans  = [0 0]';
-
-    rtype = 0;
-    gp = gp0;
+	% gp1o_w = grasps.points(:, plan{p}.grasp_id, 1);
+	% gp2o_w = grasps.points(:, plan{p}.grasp_id, 2);
+	gp1o_w = plan{p}.gp1o_w;
+	gp2o_w = plan{p}.gp2o_w;
+	
+	trans = [0 0]';
+	rtype = 0;
+	gp0   = plan{p}.gp0;
 	for fr = 1:plan{p}.N
 		qobj  = plan{p}.qobj(:, fr);
 		qgrp  = plan{p}.qgrp(:, fr);
@@ -91,43 +98,38 @@ for p = 1:N
 		rtype = plan{p}.rtype(fr);
 
 		if rtype
+            % pivoting: red
 			handles_gripper.fingertip_plus.FaceColor  = [0.9 0.1 0];
 			handles_gripper.fingertip_minus.FaceColor = [0.9 0.1 0];
-		else
+        else
+            % rolling: blue
 			handles_gripper.fingertip_plus.FaceColor  = [0.1 0.0 0.9];
 			handles_gripper.fingertip_minus.FaceColor = [0.1 0.0 0.9];
 		end
 
 		trans = trans + plan{p}.gpxy_delta(:,fr);
 
-		% rotate & translate
+		% object states
 		Robj = quat2m(qobj);
-		ps   = Robj*(mesh.vertices');
-		gp1  = Robj*gp1o_w;
-		gp2  = Robj*gp2o_w;
 
-		gp_org = (gp1 + gp2)/2;
+		% plan offset
+		gp1 = Robj*gp1o_w;
+		gp2 = Robj*gp2o_w;
+		gp  = (gp1+gp2)/2;
+		ps  = Robj*(mesh.vertices');
 
-		z0 = min(ps(3,:));
-        gp(1:2) = gp0(1:2) + trans;
-        gp(3) = gp_org(3) - z0 + para.scene_offset(3);
+		offset = plan{p}.gp0(1:2) + trans - gp(1:2);
+		offset = [offset; -min(ps(3,:))];
+		% scene offset
+		offset    = offset + para.scene_offset;
 
-        offset = gp - gp_org;
-		% translation is described in trans,
-		% so we need to get rid of xy in gp
-		ps_         = ps + offset;
-		com_        = Robj*mesh.COM + offset;
-		gp1_        = gp1 + offset;
-		gp2_        = gp2 + offset;
+		ps_  = bsxfun(@plus, ps, offset);
+		com_ = Robj*mesh.COM + offset;
+		gp1_ = gp1 + offset;
+		gp2_ = gp2 + offset;
 
 		cpid = ps_(3,:) < 1e-5;
 		cp_  = ps_(:,cpid);
-
-% 		% scene offset
-% 		ps_         = bsxfun(@plus, ps_, para.scene_offset);
-% 		com_        = com_ + para.scene_offset;
-% 		gp1_        = gp1_ + para.scene_offset;
-% 		gp2_        = gp2_ + para.scene_offset;
 
 		aobj.x = arrowLength*quatOnVec([1 0 0]', qobj);
 		aobj.y = arrowLength*quatOnVec([0 1 0]', qobj);

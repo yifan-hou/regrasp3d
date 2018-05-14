@@ -22,7 +22,7 @@ function varargout = interface(varargin)
 
 % Edit the above text to modify the response to help interface
 
-% Last Modified by GUIDE v2.5 28-Apr-2018 21:16:03
+% Last Modified by GUIDE v2.5 10-May-2018 20:11:25
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -102,14 +102,18 @@ load(filename);
 % -----------------------------------------------
 
 % planning parameter
-para.GRIPPER_TILT_LIMIT = 40*pi/180; % tilting angle tolerance
-para.GRIPPER_Z_LIMIT    = 3; % 5 finger position limit
-para.FINGER_OPEN_SPACE  = 20; % 15mm each side. used for checking collision with table
-para.FINGER_RADIUS      = 10; % used for checking collision with table
-para.MU                 = 0.1; % friction between object and the table
-para.COM_ERR            = 10; % 2 uncertainties in COM measurement
-para.GP_ERR             = 12; % 20 uncertainties in Grasp point measurement
-									  
+para.GRIPPER_TILT_LIMIT = 30*pi/180; % tilting angle tolerance
+
+para.GRIPPER_Z_LIMIT    = 1; % 2 finger position limit
+para.FINGER_OPEN_SPACE_0  = 18; % 15mm each side. used for checking collision with table
+para.FINGER_OPEN_SPACE_f  = 16; % 15mm each side. used for checking collision with table
+para.FINGER_RADIUS      = 9.5; % used for checking collision with table
+
+para.MU                 = 1.1; % friction between object and the table
+para.COM_ERR            = 3; % 2 uncertainties in COM measurement
+para.GP_ERR             = 5; % 20 uncertainties in Grasp point measurement
+									 
+para.N_Grasps_Attempt  = 10; % number of grasps that we run planGripper on 
 % optimization parameter
 para.opt_obj_N               = 20;
 para.opt_obj_con_delta_theta = 0.3;
@@ -200,14 +204,24 @@ end
 
 
 function [] = BTN_rand_initial_Callback(hObject, eventdata, handles)
-global mesh q0
-q0 = quatRand();
+global mesh q0 fgraph
+
+% q0 = quatRand();
+
+N = size(fgraph.quat,2);
+q0 = fgraph.quat(:,randi(N));
+
 plotObject(mesh, handles.AX_initial, q0);
 
 
 function [] = BTN_rand_final_Callback(hObject, eventdata, handles)
-global mesh qf
-qf = quatRand();
+global mesh qf q0 fgraph
+
+% qf = quatRand();
+% qf = quatMTimes(aa2quat(pi, [0 1 0]'), q0);
+N = size(fgraph.quat,2);
+qf = fgraph.quat(:,randi(N));
+
 plotObject(mesh, handles.AX_final, qf);
 
 
@@ -719,7 +733,7 @@ function BTN_EXP_read_obj_pose_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 global read_obj_pose_client para
-global mesh q0
+global mesh q0 qf
 
 disp('Calling read_obj_pose service:');
 call(read_obj_pose_client);
@@ -734,8 +748,14 @@ para.scene_offset(3) = para.scene_offset(3) + z0;
 
 plotObject(mesh, handles.AX_initial, q0);
 plotTable(handles.AX_initial);
-% plotObject(mesh, 1, q0);
-% plotTable(1);
+
+% qf = quatMTimes(aa2quat(pi, [1 1 0]'), q0);
+% qf = [0.5 0.5 0.5 0.5]';
+% plotObject(mesh, handles.AX_final, qf);
+% axis off
+% rotate3d on;
+
+
 
 set(handles.BTN_EXP_Planning, 'Enable', 'on');
 set(handles.BTN_EXP_Pre_Grasp, 'Enable', 'off');
@@ -753,7 +773,7 @@ clc;
 global para fgraph pgraph mesh gripper grasps q0 qf qg0 qgf% inputs
 global path_found plan % outputs
 global grasp_id_0 grasp_id_f
-
+global nseq
 % -------------------------------------------------------
 % 		Planning
 % -------------------------------------------------------
@@ -785,6 +805,7 @@ para.printing = true;
 if path_found
 	set(handles.BTN_animate, 'Enable', 'on');
     set(handles.BTN_EXP_Pre_Grasp, 'Enable', 'on');
+    nseq = 1;
 else
 	set(handles.BTN_animate, 'Enable', 'off');
     set(handles.BTN_EXP_Pre_Grasp, 'Enable', 'off');
@@ -812,6 +833,7 @@ set(handles.BTN_EXP_Init_ROS, 'Enable', 'off');
 set(handles.BTN_EXP_Reset, 'Enable', 'off');
 set(handles.BTN_EXP_read_obj_pose, 'Enable', 'off');
 set(handles.BTN_EXP_Planning, 'Enable', 'off');
+set(handles.BTN_NextTraj, 'Enable', 'off');
 set(handles.BTN_EXP_Pre_Grasp, 'Enable', 'off');
 set(handles.BTN_EXP_Run, 'Enable', 'on');
 set(handles.BTN_EXP_Release_Reset, 'Enable', 'on');
@@ -823,9 +845,11 @@ function BTN_EXP_Run_Callback(hObject, eventdata, handles)
 % hObject    handle to BTN_EXP_Run (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-global run_client
+global run_client nseq
 disp('Calling Run_service:');
 call(run_client);
+
+nseq = nseq + 1;
 
 set(handles.BTN_EXP_Init_ROS, 'Enable', 'off');
 set(handles.BTN_EXP_Reset, 'Enable', 'off');
@@ -842,7 +866,7 @@ function BTN_EXP_Release_Reset_Callback(hObject, eventdata, handles)
 % hObject    handle to BTN_EXP_Release_Reset (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-global release_reset_client
+global release_reset_client plan
 call(release_reset_client);
 
 set(handles.BTN_EXP_Init_ROS, 'Enable', 'off');
@@ -853,6 +877,10 @@ set(handles.BTN_EXP_Pre_Grasp, 'Enable', 'off');
 set(handles.BTN_EXP_Run, 'Enable', 'off');
 set(handles.BTN_EXP_Release_Reset, 'Enable', 'off');
 
+if length(plan) > 1
+    set(handles.BTN_NextTraj, 'Enable', 'on');
+end
+    
 disp('Release_reset is done.');
 
 % --- Executes on button press in BTN_EXP_Init_ROS.
@@ -878,3 +906,41 @@ set(handles.BTN_EXP_Run, 'Enable', 'off');
 set(handles.BTN_EXP_Release_Reset, 'Enable', 'off');
 
 disp('Initialization is done. Service clients are ready to use.');
+
+
+% --- Executes on button press in BTN_NextTraj.
+function BTN_NextTraj_Callback(hObject, eventdata, handles)
+% hObject    handle to BTN_NextTraj (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+global plan nseq q0 mesh para grasps
+
+assert(nseq > 1);
+% Now the previous part of traj is finished.
+% Find the current object pose
+q0 = plan{nseq-1}.qobj(:, end); % this is the current obj q
+gp1o_w = grasps.points(:, plan{nseq-1}.grasp_id, 1);
+gp2o_w = grasps.points(:, plan{nseq-1}.grasp_id, 2);
+gpo_w = (gp1o_w + gp2o_w)/2;
+gp0_w = quatOnVec(gpo_w, q0); % this is the grp pos when p_obj = [0 0 0]
+
+p_grp = dlmread('current_gripper_pose.txt');
+p_grp = p_grp(1:3)'; % this is the current grp pos
+p_obj = p_grp - gp0_w; % this is the current obj pos
+
+pt0  = quat2m(q0)*(mesh.vertices');
+z0   = min(pt0(3,:));
+para.scene_offset = p_obj;
+para.scene_offset(3) = para.scene_offset(3) + z0;
+plotObject(mesh, handles.AX_initial, q0); hold on;
+plotTable(handles.AX_initial);
+
+disp(['Generating files for trajectory ' num2str(nseq) ':']);
+generateRobotTraj({plan{nseq}});
+
+disp('Done.')
+
+set(handles.BTN_animate, 'Enable', 'on');
+set(handles.BTN_EXP_Pre_Grasp, 'Enable', 'on');
+
+

@@ -1,24 +1,41 @@
-clear;clc
-n0 = [0 0 1]';
-q1 = aa2quat(0, n0);
-q2 = aa2quat(60*pi/180, n0);
-q3 = aa2quat(90*pi/180, n0);
+% figure(2); clf; hold on;
+% 
+% for i = 1:grasps.count
+% 	xx = grasps.points(1,i, :);
+% 	yy = grasps.points(2,i, :);
+% 	zz = grasps.points(3,i, :);
+% 	xx = xx(:); yy = yy(:); zz = zz(:);
+% 	plot3(xx,yy,zz, '*');
+% end
+plotObject(mesh, 3, q0)
+hold on;
+for i = 1:grasps.count
+	gp1o = grasps.points(:, i, 1);
+	gp2o = grasps.points(:, i, 2);
+	gp1 = quatOnVec(gp1o, q0);
+	gp2 = quatOnVec(gp2o, q0);
+	xx = [gp1(1) gp2(1)];
+	yy = [gp1(2) gp2(2)];
+	zz = [gp1(3) gp2(3)];
+	% xx = grasps.points(1,i, :);
+	% yy = grasps.points(2,i, :);
+	% zz = grasps.points(3,i, :);
+% 	xx = xx(:); yy = yy(:); zz = zz(:);
+    disp(i);
+	plot3(xx,yy,zz, '- *');
+end
 
-q = quatSquad([0 2 3], [q1 q2 q3], (0:0.01:1)*3);
 
-[theta, n] = quat2aa(q);
-
-n'
-
-plot(theta);
-
-
-
-
-
-
-% clc;
-
+% % % plot the planning problem for grp
+	% figure(1); clf(1);hold on;
+	% plot([1:obj_plan{gps}.Nf], x,'- .b');
+	% plot(find(paraOpt_GRP.rtype~=0), x(paraOpt_GRP.rtype~=0),'og');
+	% plot([1:obj_plan{gps}.Nf], xrange(1,:), '-r');
+	% plot([1:obj_plan{gps}.Nf], xrange(2,:), '-r');
+	% plot([1:obj_plan{gps}.Nf], obj_plan{gps}.obj_rotation, '-y');
+	% plot(1, paraOpt_GRP.x0, '.k', 'markersize',10);
+	% plot(obj_plan{gps}.Nf, paraOpt_GRP.xf, '.k', 'markersize',10);
+	
 % NFound = [174	2;
 % 		 337	41;
 % 		 611	173;

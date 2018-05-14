@@ -28,3 +28,11 @@ Pivoting:
 		xy: force, towards the origin. (not implemented yet)
 		z: position, move according to plan
 
+screw tip up pose:
+0.0876068 0.392406 0.270768 0.7071 -0.7071 0 0 
+
+Screw down pose:
+0.0539 0.392 0.2739 0.4183 -0.3489 -0.7909 -0.2790
+
+screw up q:
+0.5 0.5 0.5 0.5

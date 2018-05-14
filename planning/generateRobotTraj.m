@@ -98,6 +98,7 @@ f_qgrp        = fopen(['../results/qgrp.txt'],'w');
 f_grp0        = fopen(['../results/grp0.txt'],'w');
 f_grpz        = fopen(['../results/grpz.txt'],'w');
 f_grpxy_delta = fopen(['../results/grpxy_delta.txt'],'w');
+f_grp_width   = fopen(['../results/grp_width.txt'],'w');
 for p = 1:1
 	for fr = 1:plan_smooth{p}.N
 		% read
@@ -136,8 +137,10 @@ for p = 1:1
 		end
 	end
 	gp0 = plan{p}.gp0 + trans_p2r;
+	grp_width = norm(plan{p}.gp1o_w - plan{p}.gp2o_w);
 	fprintf(f_N, '%d\n', plan_smooth{p}.N);
 	fprintf(f_grp0, '%f\t%f\t%f\n', gp0(1), gp0(2), gp0(3));
+	fprintf(f_grp_width, '%f\n', grp_width);
 	
 	fclose(f_N);
 	fclose(f_rtype);
@@ -146,6 +149,7 @@ for p = 1:1
 	fclose(f_grp0);
 	fclose(f_grpz);
 	fclose(f_grpxy_delta);
+	fclose(f_grp_width);
 end
 
 disp('Trajectory is written to file.');

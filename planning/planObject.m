@@ -46,6 +46,8 @@ gpxy_delta    = cell(Ng, 1);
 gp0           = cell(Ng, 1); % initial
 gp1           = cell(Ng, 1); % left
 gp2           = cell(Ng, 1); % right
+gp1o_w        = cell(Ng, 1); % for animation
+gp2o_w        = cell(Ng, 1); % 
 
 for g = 1:Ng
 
@@ -54,29 +56,63 @@ for g = 1:Ng
 	% -----------------------------------------
 
 	% under world coordinate, calculate the grasp pos for object in q0, qf
-	gp1o_w = grasps.points(:, grasp_ids(g), 1);
-	gp2o_w = grasps.points(:, grasp_ids(g), 2);
+	gp1o_w{g} = grasps.points(:, grasp_ids(g), 1);
+	gp2o_w{g} = grasps.points(:, grasp_ids(g), 2);
 
 	% Collision between gripper and table
-	gp10  = quatOnVec(gp1o_w, q0);
-	gp20  = quatOnVec(gp2o_w, q0);
+	gp10  = quatOnVec(gp1o_w{g}, q0);
+	gp20  = quatOnVec(gp2o_w{g}, q0);
 	qfr0  = getProperGraspSimple(gp10, gp20);
-	gp1f  = quatOnVec(gp1o_w, qf);
-	gp2f  = quatOnVec(gp2o_w, qf);
+	gp1f  = quatOnVec(gp1o_w{g}, qf);
+	gp2f  = quatOnVec(gp2o_w{g}, qf);
 	qfrf  = getProperGraspSimple(gp1f, gp2f);
 	gp0_x = quatOnVec([1 0 0]', qfr0);
 	gp0_z = quatOnVec([0 0 1]', qfr0);
 	gpf_x = quatOnVec([1 0 0]', qfrf);
 	gpf_z = quatOnVec([0 0 1]', qfrf);
-	gp10_bottom = gp10 + gp0_x*para.FINGER_OPEN_SPACE - gp0_z*para.FINGER_RADIUS;
-	gp20_bottom = gp20 - gp0_x*para.FINGER_OPEN_SPACE - gp0_z*para.FINGER_RADIUS;
-	gp1f_bottom = gp1f + gpf_x*para.FINGER_OPEN_SPACE - gpf_z*para.FINGER_RADIUS;
-	gp2f_bottom = gp2f - gpf_x*para.FINGER_OPEN_SPACE - gpf_z*para.FINGER_RADIUS;
+	gp10_bottom = gp10 + gp0_x*para.FINGER_OPEN_SPACE_0 - gp0_z*para.FINGER_RADIUS;
+	gp20_bottom = gp20 - gp0_x*para.FINGER_OPEN_SPACE_0 - gp0_z*para.FINGER_RADIUS;
+	gp1f_bottom = gp1f + gpf_x*para.FINGER_OPEN_SPACE_f - gpf_z*para.FINGER_RADIUS;
+	gp2f_bottom = gp2f - gpf_x*para.FINGER_OPEN_SPACE_f - gpf_z*para.FINGER_RADIUS;
 
-    disp([gp10_bottom(3)-tablez0 gp20_bottom(3)-tablez0 gp1f_bottom(3)-tablezf gp2f_bottom(3)-tablezf]);
-	if any([gp10_bottom(3)-tablez0 gp20_bottom(3)-tablez0 gp1f_bottom(3)-tablezf gp2f_bottom(3)-tablezf]< para.GRIPPER_Z_LIMIT)
-		grasps_flag(g) = -1;
-		continue;
+	g0_bottom = min([gp10_bottom(3)-tablez0  gp20_bottom(3)-tablez0]); 
+	gf_bottom = min([gp1f_bottom(3)-tablezf  gp2f_bottom(3)-tablezf]); 
+    % disp([gp10_bottom(3)-tablez0 gp20_bottom(3)-tablez0 gp1f_bottom(3)-tablezf gp2f_bottom(3)-tablezf]);
+
+    g_bottom = min(g0_bottom, gf_bottom);
+	if g_bottom < para.GRIPPER_Z_LIMIT
+		if abs(g_bottom - para.GRIPPER_Z_LIMIT) > 0.3*para.FINGER_RADIUS
+			grasps_flag(g) = -1;
+			continue;
+		end
+
+		gripper_z_shiftup = 0.3*para.FINGER_RADIUS;
+		% hack: offset grasp position by a little bit
+		if g0_bottom < gf_bottom
+			% grasp 0 needs shift up
+			gp10(3) = gp10(3) + gripper_z_shiftup;
+			gp20(3) = gp20(3) + gripper_z_shiftup;
+			gp1o_w{g}  = quatOnVec(gp10, quatInv(q0));
+			gp2o_w{g}  = quatOnVec(gp20, quatInv(q0));
+		else
+			gp1f(3) = gp1f(3) + gripper_z_shiftup;
+			gp2f(3) = gp2f(3) + gripper_z_shiftup;
+			gp1o_w{g}  = quatOnVec(gp1f, quatInv(qf));
+			gp2o_w{g}  = quatOnVec(gp2f, quatInv(qf));
+		end
+		% check new grasp
+		gp10_bottom = gp10 + gp0_x*para.FINGER_OPEN_SPACE_0 - gp0_z*para.FINGER_RADIUS;
+		gp20_bottom = gp20 - gp0_x*para.FINGER_OPEN_SPACE_0 - gp0_z*para.FINGER_RADIUS;
+		gp1f_bottom = gp1f + gpf_x*para.FINGER_OPEN_SPACE_f - gpf_z*para.FINGER_RADIUS;
+		gp2f_bottom = gp2f - gpf_x*para.FINGER_OPEN_SPACE_f - gpf_z*para.FINGER_RADIUS;
+		g0_bottom = min([gp10_bottom(3)-tablez0  gp20_bottom(3)-tablez0]); 
+		gf_bottom = min([gp1f_bottom(3)-tablezf  gp2f_bottom(3)-tablezf]); 
+	    g_bottom = min(g0_bottom, gf_bottom);
+	    if g_bottom < para.GRIPPER_Z_LIMIT
+	    	% If the hack still doesn't work 
+            grasps_flag(g) = -1;
+	    	continue;
+	    end
 	end
 
 	%  Collision between gripper and object
@@ -141,7 +177,6 @@ for g = 1:Ng
 	gp1{g}           = zeros(3, Ng); % grasp position (includes offset)
 	gp2{g}           = zeros(3, Ng);
 
-
 	is_feasible = true;
 	for fr = 1:Nf
 		qp   = qobj(:, fr);
@@ -154,8 +189,8 @@ for g = 1:Ng
 		% 	contact point on the table
 		points_fr = m_fr*points; 
 		com_fr    = m_fr*com;
-		gp1_fr    = m_fr*gp1o_w;
-		gp2_fr    = m_fr*gp2o_w;
+		gp1_fr    = m_fr*gp1o_w{g};
+		gp2_fr    = m_fr*gp2o_w{g};
 
 		[zoffset, min_id] = min(points_fr(3,:));
 		points_fr(3,:)    = points_fr(3,:) - zoffset;
@@ -261,7 +296,7 @@ for g = 1:Ng
 		% Check if getting stuck 
 		% 	(going down and within friction cone)
 		% 
-		gp_fr   = (gp1_fr + gp2_fr)/2;
+		gp_fr      = (gp1_fr + gp2_fr)/2;
 		gpz{g}(fr) = gp_fr(3);
 		
 		if fr > 1
@@ -312,31 +347,40 @@ if isempty(feasible_id)
 	return;
 end
 
+disp(grasp_ids(feasible_id));
+
 grasps_score = zeros(Nsol, 1);
 for i = 1:Nsol
 	minz1 = min(gp1{feasible_id(i)}(3,:));
 	minz2 = min(gp2{feasible_id(i)}(3,:));
-    grasps_score(i) = min(minz1, minz2) + 0.2*min(tilt_range{feasible_id(i)}(2,:));
+%     grasps_score(i) = 0.003*min(minz1, minz2) + 1.0*min(tilt_range{feasible_id(i)}(2,:));
+    grasps_score(i) = 1.003*min(minz1, minz2) + 0.0*min(tilt_range{feasible_id(i)}(2,:));
 end
 
-% dispC('scores: ');
-% dispC(grasps_score);
+[~, id_sel]     = sort(grasps_score, 'descend');
+if length(id_sel) > para.N_Grasps_Attempt
+	id_sel = id_sel(1:para.N_Grasps_Attempt);
+end
 
-[~, id_sel] = max(grasps_score);
 id_sel_feasible = feasible_id(id_sel);
 
-obj_plan.Nf   = Nf;
-obj_plan.qobj = qobj;
-obj_plan.grasp_qframes = grasp_qframes{id_sel_feasible};
-obj_plan.cf_range      = cf_range{id_sel_feasible};     
-obj_plan.cf_feasible   = cf_feasible{id_sel_feasible};        
-obj_plan.tilt_range    = tilt_range{id_sel_feasible};   
-obj_plan.rtype         = rtype{id_sel_feasible};        
-obj_plan.obj_rotation  = obj_rotation{id_sel_feasible}; 
-obj_plan.stuck         = stuck{id_sel_feasible};        
-obj_plan.gpz           = gpz{id_sel_feasible};          
-obj_plan.gp0           = gp0{id_sel_feasible};          
-obj_plan.gpxy_delta    = gpxy_delta{id_sel_feasible};   
+obj_plan = cell(length(id_sel),1);
+for gps = 1:length(id_sel)
+	obj_plan{gps}.Nf            = Nf;
+	obj_plan{gps}.qobj          = qobj;
+	obj_plan{gps}.grasp_qframes = grasp_qframes{id_sel_feasible(gps)};
+	obj_plan{gps}.cf_range      = cf_range{id_sel_feasible(gps)};     
+	obj_plan{gps}.cf_feasible   = cf_feasible{id_sel_feasible(gps)};        
+	obj_plan{gps}.tilt_range    = tilt_range{id_sel_feasible(gps)};   
+	obj_plan{gps}.rtype         = rtype{id_sel_feasible(gps)};        
+	obj_plan{gps}.obj_rotation  = obj_rotation{id_sel_feasible(gps)}; 
+	obj_plan{gps}.stuck         = stuck{id_sel_feasible(gps)};        
+	obj_plan{gps}.gpz           = gpz{id_sel_feasible(gps)};          
+	obj_plan{gps}.gp0           = gp0{id_sel_feasible(gps)};          
+	obj_plan{gps}.gpxy_delta    = gpxy_delta{id_sel_feasible(gps)};   
+	obj_plan{gps}.gp1o_w        = gp1o_w{id_sel_feasible(gps)}; 
+	obj_plan{gps}.gp2o_w        = gp2o_w{id_sel_feasible(gps)};
+end
 
 id_sel = grasp_ids(id_sel_feasible);
 
