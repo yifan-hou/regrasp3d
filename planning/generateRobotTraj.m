@@ -10,7 +10,7 @@ global para
 trans_p2r  = para.scene_offset;
 compensate = 180-22.5;
 Velocity_p = 100; % mm/s
-Velocity_q = 15*pi/180; % mm/s
+Velocity_q = 45*pi/180; % mm/s
 Rate       = 500; %Hz
 
 % --------------------------------------

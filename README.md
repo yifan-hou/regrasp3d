@@ -36,3 +36,10 @@ Screw down pose:
 
 screw up q:
 0.5 0.5 0.5 0.5
+
+
+bar_clamp up q:
+    0.9390
+   -0.0193
+   -0.0227
+   -0.3426

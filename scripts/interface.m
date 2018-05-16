@@ -104,14 +104,14 @@ load(filename);
 % planning parameter
 para.GRIPPER_TILT_LIMIT = 30*pi/180; % tilting angle tolerance
 
-para.GRIPPER_Z_LIMIT    = 1; % 2 finger position limit
-para.FINGER_OPEN_SPACE_0  = 18; % 15mm each side. used for checking collision with table
-para.FINGER_OPEN_SPACE_f  = 16; % 15mm each side. used for checking collision with table
+para.GRIPPER_Z_LIMIT    = 2; % 2 finger position limit
+para.FINGER_OPEN_SPACE_0  = 18; % 18mm each side. used for checking collision with table
+para.FINGER_OPEN_SPACE_f  = 16; % 16mm each side. used for checking collision with table
 para.FINGER_RADIUS      = 9.5; % used for checking collision with table
 
 para.MU                 = 1.1; % friction between object and the table
-para.COM_ERR            = 3; % 2 uncertainties in COM measurement
-para.GP_ERR             = 5; % 20 uncertainties in Grasp point measurement
+para.COM_ERR            = 3; % 3 uncertainties in COM measurement
+para.GP_ERR             = 5; % 5 uncertainties in Grasp point measurement
 									 
 para.N_Grasps_Attempt  = 10; % number of grasps that we run planGripper on 
 % optimization parameter
@@ -217,11 +217,12 @@ plotObject(mesh, handles.AX_initial, q0);
 function [] = BTN_rand_final_Callback(hObject, eventdata, handles)
 global mesh qf q0 fgraph
 
-% qf = quatRand();
+% qf = quatRand()
 % qf = quatMTimes(aa2quat(pi, [0 1 0]'), q0);
-N = size(fgraph.quat,2);
-qf = fgraph.quat(:,randi(N));
+% N = size(fgraph.quat,2);
+% qf = fgraph.quat(:,randi(N));
 
+qf = [0.5 0.5 0.5 0.5]';
 plotObject(mesh, handles.AX_final, qf);
 
 
