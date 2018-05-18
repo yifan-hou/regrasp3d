@@ -155,7 +155,7 @@ for i=1:NFS
     % Construct a questdlg with two options
     choice = questdlg('Accept this stable pose?', ...
 	'Stable Pose Checking', ...
-    'Yes please','No thank you','No thank you');
+    'Yes please','No thank you','Stop please','No thank you');
     % Handle response
     switch choice
         case 'Yes please'
@@ -164,6 +164,9 @@ for i=1:NFS
         case 'No thank you'
             disp('Pose rejected');
             m_is_stable(i) = false;
+        case 'Stop please'
+            disp('stopped.');
+            return;
     end
 end
 NFS    = sum(m_is_stable);
