@@ -18,9 +18,9 @@ para_x0_k         = para.x0_k;
 para_xf_k         = para.xf_k;
 para_Qreg         = para.Qreg;
 
-% 
+%
 % Range: XL, XU
-% 
+%
 
 % initial/final grasps
 para_range(1,1) = para_range(1,1)*(1-para_x0_k) + para_x0*para_x0_k;
@@ -29,9 +29,9 @@ para_range(1,N) = para_range(1,N)*(1-para_xf_k) + para_xf*para_xf_k;
 para_range(2,N) = para_range(2,N)*(1-para_xf_k) + para_xf*para_xf_k;
 
 
-% 
+%
 % rtype
-% 
+%
 Rt = diag(1 - para_rtype(1:end-1));
 U = [zeros(N-1,1) diag(ones(N-1, 1))];
 L = [diag(ones(N-1,1)) zeros(N-1, 1)];
@@ -39,9 +39,9 @@ b = - para_obj_rotation(2:end)' + para_obj_rotation(1:end-1)';
 A = Rt*(U-L);
 B = Rt*b;
 
-% 
+%
 % cost
-% 
+%
 Qdiag          = ones(1, N);
 Qdiag(2:end-1) = 2;
 Qdiag1         = -ones(1, N-1);

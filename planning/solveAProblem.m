@@ -6,7 +6,7 @@ addpath ../optimization/snoptfiles
 addpath ../optimization/
 
 plan = [];
-% treat initial/final pose as additional mode
+% treat initial/final pose as additional nodes
 % build the full graph
 dispC('[Planning] Building Full Graph:');
 adj_matrix = zeros(fgraph.NM+2);
@@ -48,8 +48,9 @@ if ~any(grasp_id_f)
 	dispC('[Planning] No Solution. No feasible final grasps.');
 	return;
 end
-
 mode_grasps  = [fgraph.grasps; grasp_id_0; grasp_id_f];
+
+% begin graph search
 path_counter = 1;
 while true
 	[~, mode_id_path] = dijkstra(adj_matrix, ones(fgraph.NM+2), fgraph.NM+1, fgraph.NM+2);
@@ -63,7 +64,7 @@ while true
 		dispC('[Planning] No solution within 3 regrasps found given the available grasps.');
 		break;
 	end
-	
+
 	dispC(['[Planning] Trying Path #' num2str(path_counter) ', Path length = ' num2str(NP) ]);
 	dispC('[Planning] Planning for each edge on the path: ');
 
@@ -90,16 +91,18 @@ while true
 			path_q(:,p+1) = getClosestQuat(path_q(:, p), fgraph.quat(:, mode_id_path(p+1)), [0 0 1]');
 		end
 
-		id_common = find(mode_grasps(mode_id_path(p),:) & mode_grasps(mode_id_path(p+1),:)); 
+		id_common = find(mode_grasps(mode_id_path(p),:) & mode_grasps(mode_id_path(p+1),:));
 		assert(~isempty(id_common)); % if failed, the graph search has problem
 		dispC(['  Edge #' num2str(p) ', common grasps: ' num2str(length(id_common))]);
 
 
+		%
+		% 	Common grasps are available.
+		% 	Select a grasp and plan obj motion
+		%
 		edge_solved = true;
-		% 
-		% 	Find a grasp, plan obj motion
-		% 
-		[obj_plan, id_sel] = planObject(id_common, path_q(:,p), path_q(:,p+1), qg0_p, qgf_p, exactq, method);
+		[obj_plan, id_sel] = planObject(id_common, path_q(:,p), path_q(:,p+1),
+				qg0_p, qgf_p, method);
 
 		if isempty(id_sel)
             dispC('  --- [Object] No solution. ');

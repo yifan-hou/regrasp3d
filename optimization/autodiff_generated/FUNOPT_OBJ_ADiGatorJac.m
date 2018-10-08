@@ -353,12 +353,12 @@ global ADiGator_FUNOPT_OBJ_ADiGatorJac
 Gator1Data = ADiGator_FUNOPT_OBJ_ADiGatorJac.ADiGator_quat2aa.Gator1Data;
 % ADiGator Start Derivative Computations
 cada1f1dx = q.dx(Gator1Data.Index1);
-cada1f1 = q.f(1);
+cada1f1 = q.f(1,:);
 cada1f2dx = -1./sqrt(1-cada1f1.^2).*cada1f1dx;
 cada1f2 = acos(cada1f1);
 theta.dx = 2.*cada1f2dx;
 theta.f = 2*cada1f2;
-%User Line: theta = 2*acos(q(1));
+%User Line: theta = 2*acos(q(1,:));
 qv.dx = q.dx(Gator1Data.Index3);
 qv.f = q.f(Gator1Data.Index2,:);
 %User Line: qv = q(2:4,:);

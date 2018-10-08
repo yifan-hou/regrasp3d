@@ -19,7 +19,7 @@ if norm(gp(:,1) - gp(:,2)) < 1e-3
     return;
 end
 
-qgrasp = getProperGraspSimple(gp(:,1), gp(:,2)); 
+qgrasp = getProperGraspSimple(gp(:,1), gp(:,2));
 
 % open finger a little big when checking fingertip,
 % in case the grasp is tilting
@@ -71,14 +71,14 @@ for i = 1:360
 	if checkResult(surf)
 		feasible_range(i) = false;
 		continue;
-	end	
+	end
 
 	finger_minus.vertices = bsxfun(@plus, quatOnVec(gripper.vertices_safe{4}, gq(:, i)), gp(:,2))';
 	[~, surf]             = SurfaceIntersection(mesh, finger_minus, 'debug', false);
 	if checkResult(surf)
 		feasible_range(i) = false;
 		continue;
-	end	
+	end
 
 	palm_plus     = bsxfun(@plus, quatOnVec(gripper.vertices_safe{5}, gq(:, i)), gp(:,1));
 	palm_minus    = bsxfun(@plus, quatOnVec(gripper.vertices_safe{6}, gq(:, i)), gp(:,2));
@@ -87,10 +87,10 @@ for i = 1:360
 	if checkResult(surf)
 		feasible_range(i) = false;
 		continue;
-	end	
+	end
 end % end for
 
-% shrink feasible_range for robustness 
+% shrink feasible_range for robustness
 start1      = strfind([0, feasible_range==1],[0 1]);
 end1        = strfind([feasible_range==1,0],[1 0]);
 length_of_1 = end1 - start1 + 1;

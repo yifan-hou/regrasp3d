@@ -37,19 +37,19 @@ while true
 	if grasps_count > 1
 		dist1 = normByCol(bsxfun(@minus, grasp_points(:, 1:grasps_count, 1), grasp_points_face_i));
         dist2 = normByCol(bsxfun(@minus, grasp_points(:, 1:grasps_count, 2), grasp_points_face_i));
-        
+
 		similar_grasp_id = dist1 < para.GRASP_DIST_LIMIT;
         if any(similar_grasp_id)
 			similar_grasp_i = true;
-            similar_grasps  = grasp_points(:, similar_grasp_id, 2); 
+            similar_grasps  = grasp_points(:, similar_grasp_id, 2);
         end
-        
+
         similar_grasp_id = dist2 < para.GRASP_DIST_LIMIT;
         if any(similar_grasp_id)
 			similar_grasp_i = true;
-            similar_grasps  = [similar_grasps grasp_points(:, similar_grasp_id, 1)]; 
+            similar_grasps  = [similar_grasps grasp_points(:, similar_grasp_id, 1)];
         end
-        
+
 	end
 
 	% 3. find another point to form a good grasp
@@ -76,7 +76,7 @@ while true
         else
             Ns_j                        = floor(mesh_s.area(j)*para.POINTJ_SAMPLE_DENSITY)+1; % # of sample points
             grasp_points_face_j_samples = sampleTriUniform(p2(:,1), p2(:,2),p2(:,3), Ns_j);
-            
+
 			angle_is_good = false;
             for s = 1:Ns_j
                 % check angles
@@ -92,7 +92,7 @@ while true
 				grasp_points_face_j = grasp_points_face_j_samples(:, s);
                 break;
             end
-            
+
             if ~angle_is_good
                 continue;
             end
@@ -145,17 +145,17 @@ while true
 		gp = reshape(grasp_points(:,grasps_count-1,:), [3,2]);
 		plot3(gp(1,:), gp(2,:), gp(3,:), '. -','linewidth',2, 'markersize', 20);
 		drawnow;
-        
+
         break; % finish one sampling
 	end
 
-	if grasps_count > para.NGS 
+	if grasps_count > para.NGS
 		break;
 	end
 
 	if resample_count > para.N_RESAMPLE
 		break;
-	end	
+	end
 end
 
 sgtime = toc;
@@ -175,7 +175,7 @@ grasps.range     = grasp_feasible_range;
 grasps.ref_frame = grasp_frame; % describes where is the 0 in grasps.range
 
 % --------------------------------------------
-% 		Calculate feasible grasps 
+% 		Calculate feasible grasps
 % 		for each stable placement
 % --------------------------------------------
 disp('[CalGrasp] Computing feasible grasps for each stable placement:');
@@ -192,7 +192,7 @@ fgraph.grasps = m_grasps;
 
 disp('[CalGrasp] Computing contact mode graph:');
 % --------------------------------------------
-% 		Calculate contact mode fgraph 
+% 		Calculate contact mode fgraph
 % --------------------------------------------
 m_adj_matrix = zeros(fgraph.NM);
 for i = 1:fgraph.NM

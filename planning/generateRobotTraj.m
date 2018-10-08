@@ -24,7 +24,7 @@ Rate       = 500; %Hz
 
 % Initial plotting, get handles,
 % contact points
-% [~, cpid] = min(points_w(3,:)); 
+% [~, cpid] = min(points_w(3,:));
 % cpid      = abs(points_w(3,:) - points_w(3,cpid))<1e-5;
 % cp_w      = points_w(:,cpid);
 
@@ -47,24 +47,24 @@ for p = 1:1 % only generating the first part of the trajectory
     for fr = 1:plan{p}.N-1
         qgrp_seg = plan{p}.qgrp(:, fr:fr+1);
         grpz_seg = plan{p}.gpz(:, fr:fr+1);
-        
+
         Max_ang  = angBTquat(qgrp_seg(:,1), qgrp_seg(:,2));
         Max_dist = abs(grpz_seg(1) - grpz_seg(2));
-        
+
         K = max(Max_ang/max_diff_q, Max_dist/max_diff_p);
-        
+
         n_seg_new = round(K*2);
         if n_seg_new < 2
             n_seg_new = 2;
         end
-        
+
 		middle_qgp        = quatSlerp(plan{p}.qgrp(:, fr), plan{p}.qgrp(:, fr+1), (0:n_seg_new-1)/(n_seg_new-1));
 		middle_gpz        = interp1([0 1], plan{p}.gpz(:, fr:fr+1), (0:n_seg_new-1)/(n_seg_new-1));
 		middle_gpxy_delta = plan{p}.gpxy_delta(:, fr)*ones(1, n_seg_new)/n_seg_new;
 		temp_qgp          = [temp_qgp middle_qgp];
 		temp_gpz          = [temp_gpz middle_gpz];
 		temp_gpxy_delta   = [temp_gpxy_delta middle_gpxy_delta];
-        
+
         if (plan{p}.rtype(fr) == false) && (plan{p}.rtype(fr+1) == false)
             temp_rtype = [temp_rtype false(1, n_seg_new)];
         else
@@ -113,7 +113,7 @@ for p = 1:1
 		xg    = quatOnVec([1 0 0]', qg_p);
 		qcp1  = aa2quat(compensate*pi/180, zg);
 		xw    = quatOnVec(xg, qcp1);
-		q_g2t = quatMTimes(aa2quat(pi, xw), qcp1); % transition from grasp frame to robot tool frame 
+		q_g2t = quatMTimes(aa2quat(pi, xw), qcp1); % transition from grasp frame to robot tool frame
 
 		qt_p     = quatMTimes(q_g2t, qg_p); % tool frame measured in planning
 		qt_r     = qt_p; % tool frame measured in robot frame (done)
@@ -141,7 +141,7 @@ for p = 1:1
 	fprintf(f_N, '%d\n', plan_smooth{p}.N);
 	fprintf(f_grp0, '%f\t%f\t%f\n', gp0(1), gp0(2), gp0(3));
 	fprintf(f_grp_width, '%f\n', grp_width);
-	
+
 	fclose(f_N);
 	fclose(f_rtype);
 	fclose(f_stuck);

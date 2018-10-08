@@ -1,8 +1,8 @@
 % q moves [1 0 0] to (gp1 - gp2), [0 1 0] to [? ? 0]
 % Inputs:
-%   gp1, gp2: 3x1, grasp pos in world frame
+%   gp1, gp2: 3x1, grasp pos
 % Outputs:
-%   qg: the grasp frame
+%   qg: the grasp frame, as viewed in the same frame as gp1, gp2
 %   v: the grasp axis
 
 function [qg, v] = getProperGraspSimple(gp1, gp2)
@@ -24,7 +24,7 @@ else
     w = cross(v, u);
     R = [v u w];
     qg = mat2quat(R);
-    
+
 %     % check:
 %     qgz = quatOnVec([0 0 1]', qg);
 %     assert(qgz(3) > 0);
