@@ -13,15 +13,15 @@ for gps = 1:length(grasp_id)
 	paraOpt_GRP.xf_k = 0;
 
 	if ~isempty(qg0)
-		qg0z             = quatOnVec([0 0 1]', qg0);
-		qg0z_o           = quatOnVec(qg0z, quatInv(obj_plan{gps}.qs_WG(:,1)));
-		grp_ang0         = angBTVec([0 0 1]', qg0z_o, [1 0 0]'); % range: -pi ~ pi
+		q_WGz_initial    = quatOnVec([0 0 1]', qg0);
+		q_OGz_initial    = quatOnVec(q_WGz_initial, quatInv(obj_plan{gps}.qs_WG_proper(:,1)));
+		grp_ang0         = angBTVec([0 0 1]', q_OGz_initial, [1 0 0]'); % range: -pi ~ pi
 		paraOpt_GRP.x0_k = 1;
 	end
 
 	if ~isempty(qgf)
 		qgfz             = quatOnVec([0 0 1]', qgf);
-		qgfz_o           = quatOnVec(qgfz, quatInv(obj_plan{gps}.qs_WG(:,end)));
+		qgfz_o           = quatOnVec(qgfz, quatInv(obj_plan{gps}.qs_WG_proper(:,end)));
 		grp_angf         = angBTVec([0 0 1]', qgfz_o, [1 0 0]'); % range: -pi ~ pi
 		paraOpt_GRP.xf_k = 1;
 	end
@@ -47,8 +47,8 @@ for gps = 1:length(grasp_id)
 
 	paraOpt_GRP.range        = xrange;
 	paraOpt_GRP.N            = obj_plan{gps}.kNumOfFrames;
-	paraOpt_GRP.rtype        = obj_plan{gps}.flag_mode_choice;
-	paraOpt_GRP.obj_rotation = obj_plan{gps}.ns_obj_rotation_angle;
+	paraOpt_GRP.rtype        = obj_plan{gps}.b_pivoting;
+	paraOpt_GRP.obj_rotation = obj_plan{gps}.ns_obj_angle_in_G_proper;
 	paraOpt_GRP.x0           = grp_ang0;
 	paraOpt_GRP.xf           = grp_angf;
 	paraOpt_GRP.Qreg         = 1e-3;
@@ -91,7 +91,7 @@ for gps = 1:length(grasp_id)
 	% plot(find(paraOpt_GRP.rtype~=0), x(paraOpt_GRP.rtype~=0),'og');
 	% plot([1:obj_plan{gps}.kNumOfFrames], xrange(1,:), '-r');
 	% plot([1:obj_plan{gps}.kNumOfFrames], xrange(2,:), '-r');
-	% plot([1:obj_plan{gps}.kNumOfFrames], obj_plan{gps}.ns_obj_rotation_angle, '-y');
+	% plot([1:obj_plan{gps}.kNumOfFrames], obj_plan{gps}.ns_obj_angle_in_G_proper, '-y');
 	% plot(1, paraOpt_GRP.x0, '.k', 'markersize',10);
 	% plot(obj_plan{gps}.kNumOfFrames, paraOpt_GRP.xf, '.k', 'markersize',10);
 
@@ -107,14 +107,14 @@ for gps = 1:length(grasp_id)
 	%
 	qgrp = zeros(4, obj_plan{gps}.kNumOfFrames);
 	for i = 1:obj_plan{gps}.kNumOfFrames
-		ax         = quatOnVec([1; 0; 0], obj_plan{gps}.qs_WG(:,i));
-		q_incre    = aa2quat(x(i),ax);
-		qgrp(:, i) = quatMTimes(q_incre, obj_plan{gps}.qs_WG(:, i));
+		ax         = quatOnVec([1; 0; 0], obj_plan{gps}.qs_WG_proper(:,i));
+		q_relative_to_center    = aa2quat(x(i),ax);
+		qgrp(:, i) = quatMTimes(q_relative_to_center, obj_plan{gps}.qs_WG_proper(:, i));
 	end
 
 	plan.N          = obj_plan{gps}.kNumOfFrames;
-	plan.rtype      = obj_plan{gps}.flag_mode_choice;
-	plan.stuck      = obj_plan{gps}.bool_is_stuck;
+	plan.rtype      = obj_plan{gps}.b_pivoting;
+	plan.stuck      = obj_plan{gps}.b_is_stuck;
 	plan.qobj       = obj_plan{gps}.qs_WO;
 	plan.qgrp       = qgrp;
 	plan.grasp_id   = grasp_id(gps); % just for animation

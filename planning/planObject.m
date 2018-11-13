@@ -25,10 +25,33 @@ ps_OVertices           = pgraph.vertices; % decimated convex hull
 p_OCOM                 = mesh.COM;
 kPtsErrorBound         = pgraph.err_bound;
 kFrictionConeHalfWidth = atan(para.MU);
-ps_OVertices_initial   = quatOnVec(ps_OVertices, q_WO_initial);
-ps_OVertices_final     = quatOnVec(ps_OVertices, q_WO_final);
-n_table_z_initial      = min(ps_OVertices_initial(3,:));
-n_table_z_final        = min(ps_OVertices_final(3,:));
+
+% used for checking initial/final poses
+ps_WVertices_initial   = quatOnVec(ps_OVertices, q_WO_initial);
+ps_WVertices_final     = quatOnVec(ps_OVertices, q_WO_final);
+n_table_z_initial      = min(ps_WVertices_initial(3,:));
+n_table_z_final        = min(ps_WVertices_final(3,:));
+
+% Plan for object rotation
+kNumOfFrames   = 50;
+qs_WO = quatSlerp(q_WO_initial, q_WO_final, (1:kNumOfFrames)/kNumOfFrames);
+
+% evaluate each grasp location
+bs_collision_free_gripper_angles = cell(kNumOfGrasps, 1);
+ns_collision_free_range          = cell(kNumOfGrasps, 1);
+bs_pivoting_stable               = cell(kNumOfGrasps, 1);
+b_is_stuck                       = cell(kNumOfGrasps, 1);
+ns_gripper_tilt_ranges           = cell(kNumOfGrasps, 1);
+ns_obj_angle_in_G_proper         = cell(kNumOfGrasps, 1);
+qs_WG_proper                     = cell(kNumOfGrasps, 1); % used for gripper
+
+n_WG_z                           = cell(kNumOfGrasps, 1); % 0 is table height
+v2_WG_xy_delta                   = cell(kNumOfGrasps, 1);
+p_WG_initial                     = cell(kNumOfGrasps, 1); % initial
+ps_WG_left                       = cell(kNumOfGrasps, 1); % left
+ps_WG_right                      = cell(kNumOfGrasps, 1); % right
+p_OG_left                        = cell(kNumOfGrasps, 1); % for animation
+p_OG_right                       = cell(kNumOfGrasps, 1); %
 
 % flag_grasps:
 % 	  1: successful
@@ -39,24 +62,6 @@ n_table_z_final        = min(ps_OVertices_final(3,:));
 %     -5: [q obj optimization] infeasible
 %     -6: [q obj checking] no collision-free path
 flags_for_grasps  = ones(kNumOfGrasps, 1);
-
-kNumOfFrames   = 50;
-qs_WO = quatSlerp(q_WO_initial, q_WO_final, (1:kNumOfFrames)/kNumOfFrames);
-
-bs_collision_free_gripper_angles = cell(kNumOfGrasps, 1);
-flags_mode_choice                = cell(kNumOfGrasps, 1);
-ns_obj_rotation_angle            = cell(kNumOfGrasps, 1);
-ns_gripper_tilt_ranges           = cell(kNumOfGrasps, 1);
-ns_collision_free_range          = cell(kNumOfGrasps, 1);
-qs_WG                            = cell(kNumOfGrasps, 1);
-bool_is_stuck                    = cell(kNumOfGrasps, 1);
-n_WG_z                           = cell(kNumOfGrasps, 1);
-v2_WG_xy_delta                   = cell(kNumOfGrasps, 1);
-p_WG_initial                     = cell(kNumOfGrasps, 1); % initial
-ps_WG_left                       = cell(kNumOfGrasps, 1); % left
-ps_WG_right                      = cell(kNumOfGrasps, 1); % right
-p_OG_left                        = cell(kNumOfGrasps, 1); % for animation
-p_OG_right                       = cell(kNumOfGrasps, 1); %
 
 for g = 1:kNumOfGrasps
 
@@ -174,12 +179,12 @@ for g = 1:kNumOfGrasps
 	ps_WVertices_fr_old = ps_OVertices;
 	p_WG_fr_old           = zeros(3, 1);
 
-	flags_mode_choice{g}       = zeros(1, kNumOfFrames); % 1: pivotable, 0: roll
-	ns_obj_rotation_angle{g}   = zeros(1, kNumOfFrames); % rotation of object measured in grasp frame
+	bs_pivoting_stable{g}       = zeros(1, kNumOfFrames); % 1: pivotable, 0: roll
+	ns_obj_angle_in_G_proper{g}   = zeros(1, kNumOfFrames); % rotation of object measured in grasp frame
 	ns_gripper_tilt_ranges{g}  = zeros(2, kNumOfFrames); % min (right), max (left)
 	ns_collision_free_range{g} = zeros(2, kNumOfFrames, kNumOfCollisionFreeRegions); % min (right), max (left)
-	qs_WG{g}                   = zeros(4, kNumOfFrames); % grasp frame at each time step
-	bool_is_stuck{g}           = false(1, kNumOfFrames);
+	qs_WG_proper{g}                   = zeros(4, kNumOfFrames); % grasp frame at each time step
+	b_is_stuck{g}           = false(1, kNumOfFrames);
 	n_WG_z{g}                  = zeros(1, kNumOfFrames); % z pos of gripper
 	v2_WG_xy_delta{g}          = zeros(2, kNumOfFrames); % xy offset of gripper
 	ps_WG_left{g}              = zeros(3, kNumOfFrames); % grasp position (includes offset)
@@ -238,8 +243,8 @@ for g = 1:kNumOfGrasps
 		[z_ang, z_id] = getIDinCfRange(q_WG_fr, q_WO_fr, v3_OGRef_z, v3_OGRef_x);
 		z_id_range    = (z_id-90):(z_id+90);
 
-		ns_obj_rotation_angle{g}(fr)  = z_ang;
-		qs_WG{g}(:, fr) = q_WG_fr;
+		ns_obj_angle_in_G_proper{g}(fr) = z_ang;
+		qs_WG_proper{g}(:, fr) = q_WG_fr;
 
 		for cf = 1:kNumOfCollisionFreeRegions
 			% check with each range
@@ -280,10 +285,10 @@ for g = 1:kNumOfGrasps
 		end
 
 		%
-		% check pivotablity (Robustly)
+		% check pivotablity (for that frame)
 		%
 		if strcmp(method_name, 'pickplace')
-			flags_mode_choice{g}(fr) = 0;
+			bs_pivoting_stable{g}(fr) = 0;
 		else
 			% measure in grasp frame
 			q_GW_fr       = quatInv(q_WG_fr);
@@ -300,7 +305,7 @@ for g = 1:kNumOfGrasps
 			test_points_all = [test_points - p_GG_left_fr(2) - para.GP_ERR, test_points - p_GG_left_fr(2) + para.GP_ERR];
 
 			if (~any(test_points_all > 0)) || (~any(test_points_all < 0))
-				flags_mode_choice{g}(fr) = 1;
+				bs_pivoting_stable{g}(fr) = 1;
 			end
 		end
 
@@ -312,7 +317,7 @@ for g = 1:kNumOfGrasps
 		n_WG_z{g}(fr) = p_WG_fr(3);
 
 		if fr > 1
-            if (flags_mode_choice{g}(fr)==1) && (n_WG_z{g}(fr) < n_WG_z{g}(fr-1))
+            if (bs_pivoting_stable{g}(fr)==1) && (n_WG_z{g}(fr) < n_WG_z{g}(fr-1))
                 % Pivoting, going down
                 [~, cpid] = min(ps_WVertices_fr(3, :)); % < 2*kPtsErrorBound + 1e-4;
                 cp        = ps_WVertices_fr(:, cpid);
@@ -320,7 +325,7 @@ for g = 1:kNumOfGrasps
 
                 cones     = atan2(norm(gp_cp(1:2)), abs(gp_cp(3)));
                 if cones < kFrictionConeHalfWidth
-                    bool_is_stuck{g}(fr)           = true;
+                    b_is_stuck{g}(fr)           = true;
                     cp_old                 = ps_WVertices_fr_old(:, cpid);
                     gp_cp_old              = p_WG_fr_old - cp_old;
                     v2_WG_xy_delta{g}(:, fr-1) = gp_cp(1:2) - gp_cp_old(1:2);
@@ -380,16 +385,16 @@ obj_plan = cell(length(id_sel),1);
 for gps = 1:length(id_sel)
 	obj_plan{gps}.kNumOfFrames                     = kNumOfFrames;
 	obj_plan{gps}.qs_WO                            = qs_WO;
-	obj_plan{gps}.qs_WG                            = qs_WG{id_sel_feasible(gps)};
+	obj_plan{gps}.qs_WG_proper                     = qs_WG_proper{id_sel_feasible(gps)};
 	obj_plan{gps}.p_WG_initial                     = p_WG_initial{id_sel_feasible(gps)};
 	obj_plan{gps}.n_WG_z                           = n_WG_z{id_sel_feasible(gps)};
 	obj_plan{gps}.v2_WG_xy_delta                   = v2_WG_xy_delta{id_sel_feasible(gps)};
 	obj_plan{gps}.ns_collision_free_range          = ns_collision_free_range{id_sel_feasible(gps)};
 	obj_plan{gps}.bs_collision_free_gripper_angles = bs_collision_free_gripper_angles{id_sel_feasible(gps)};
 	obj_plan{gps}.ns_gripper_tilt_ranges           = ns_gripper_tilt_ranges{id_sel_feasible(gps)};
-	obj_plan{gps}.flag_mode_choice                 = flags_mode_choice{id_sel_feasible(gps)};
-	obj_plan{gps}.ns_obj_rotation_angle            = ns_obj_rotation_angle{id_sel_feasible(gps)};
-	obj_plan{gps}.bool_is_stuck                    = bool_is_stuck{id_sel_feasible(gps)};
+	obj_plan{gps}.b_pivoting                       = bs_pivoting_stable{id_sel_feasible(gps)};
+	obj_plan{gps}.ns_obj_angle_in_G_proper         = ns_obj_angle_in_G_proper{id_sel_feasible(gps)};
+	obj_plan{gps}.b_is_stuck                       = b_is_stuck{id_sel_feasible(gps)};
 	obj_plan{gps}.p_OG_left                        = p_OG_left{id_sel_feasible(gps)};
 	obj_plan{gps}.p_OG_right                       = p_OG_right{id_sel_feasible(gps)};
 end
