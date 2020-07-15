@@ -93,20 +93,19 @@ for m = 1:NFC
 	[~, in] = projectOntoTri(a, b, c, COM);
 
 	if in
-		m_is_stable(m)   = true;
-		
 		% get normal
-	    b = cross(a - b, c - b);
-	    if norm(b) < 1e-7
-	        error('Degenerated tri-angle');
+	    d = cross(a - b, c - b);
+	    if norm(d) < 1e-7 % check area of the tri-angle
+	        continue; % Degenerated tri-angle
 	    end
-	    b = b/norm(b);
-	    if b'*(COM - a) < 0
-		    % b should point inward
-	    	b = -b;
+	    d = d/norm(d);
+	    if d'*(COM - a) < 0
+		    % d should point inward
+	    	d = -d;
 	    end
-		q           = quatBTVec(b, [0 0 1]');
+		q           = quatBTVec(d, [0 0 1]');
 		m_quat(:,m) = q;
+        m_is_stable(m)   = true;
 	end
 end
 NFS    = sum(m_is_stable);
@@ -144,6 +143,7 @@ m_quat = m_quat(:, m_is_stable);
 m_is_stable = true(1, NFS);
 disp('[GetObject] Stable modes manual checking:');
 for i=1:NFS
+    disp(['number ' num2str(i) ' of ' num2str(NFS) ' poses:']);
     plotObject(mesh_s, 1, m_quat(:,i));
     view(3);
     plotObject(mesh_s, 2, m_quat(:,i));

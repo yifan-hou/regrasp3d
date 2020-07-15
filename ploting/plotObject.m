@@ -1,5 +1,5 @@
 function handles = plotObject(mesh, fidOrhandle, q, handles)
-global para
+% global para
 
 if nargin <= 2
 	q = [1 0 0 0]';
@@ -9,13 +9,13 @@ if nargin <= 1
 	fidOrhandle = 1;
 end
 
-m = quat2m(q);
-T = para.scene_offset;
+m = quat2SO3(q);
+% T = para.scene_offset;
 
 vertices      = m*(mesh.vertices');
 minz          = min(vertices(3,:));
 vertices(3,:) = vertices(3,:) - minz;
-vertices      = bsxfun(@plus, vertices, T);
+% vertices      = bsxfun(@plus, vertices, T);
 
 if ~isempty(fidOrhandle)
 	if isnumeric(fidOrhandle)
